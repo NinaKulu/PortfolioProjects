@@ -1,0 +1,4454 @@
+c/*
+******************** Targeted Technology Institute **********************************
+
+Welcome to Targeted Technology Institute's Practical SQL Server Database Development Training
+
+Level: From Basic to Advanced
+
+Here we build and use a database for a hypothetical Health Record Management System, HRMS
+
+	TABLES : Patient, Doctor, Disease and Diagnosis. 
+	
+*/
+
+
+CREATE DATABASE HRMDB;
+GO
+
+
+USE HRMDB;
+GO
+
+
+-- CREATING TABLES, WITH APPLICABLE CONSTRAINTS, 
+
+CREATE TABLE Patient
+(
+	mrn CHAR(5) NOT NULL,
+	pFName VARCHAR(30) NOT NULL,
+	pLName VARCHAR(30) NOT NULL,
+	PDoB DATE NOT NULL,
+	insuranceId CHAR(7) NULL, 
+	gender CHAR(1) NOT NULL,
+	SSN CHAR(11) NULL,
+	stAddress VARCHAR(25) NOT NULL,
+	city VARCHAR(25) NOT NULL,
+	[state] CHAR(2) NOT NULL,
+	zipCode CHAR(5) NOT NULL,
+	registeredDate DATE NOT NULL DEFAULT GETDATE(),
+	CONSTRAINT PK_Patient_mrn PRIMARY KEY (mrn),
+	CONSTRAINT CK_Patient_mrn_Format CHECK(mrn LIKE '[A-Z][A-Z][0-9][0-9][0-9]'),
+	CONSTRAINT UQ_Patient_insuranceId UNIQUE (insuranceId),
+	CONSTRAINT CK_Patient_gender_Format CHECK(gender IN ('F', 'M', 'U')),
+	CONSTRAINT CK_Patient_SSN_Format CHECK ((SSN LIKE '[0-9][0-9][0-9][-][0-9][0-9][-][0-9][0-9][0-9][0-9]') AND (SSN NOT LIKE '000-00-0000')),
+	CONSTRAINT UQ_Patient_SSN UNIQUE (SSN),
+	CONSTRAINT CK_Patient_state_Format CHECK([state] LIKE '[A-Z][A-Z]'),
+	CONSTRAINT CK_Pateint_zipCode_Fomrat CHECK((zipCode LIKE '[0-9][0-9][0-9][0-9][0-9]') AND (zipCode NOT LIKE '00000'))
+);
+GO
+
+
+CREATE TABLE Employee
+(
+	empId CHAR(5) NOT NULL,
+	empFName VARCHAR(25) NOT NULL,
+	empLName VARCHAR(25) NOT NULL,
+	SSN CHAR(11) NOT NULL,
+	DoB DATE NOT NULL,
+	gender CHAR(1) NOT NULL,
+	salary DECIMAL(8,2) NULL,
+	employedDate DATE NOT NULL,
+	strAddress VARCHAR (30) NOT NULL,
+	apt VARCHAR(5) NULL,
+	city VARCHAR(25) NOT NULL,
+	[state] CHAR(2) NOT NULL,
+	zipCode CHAR(5) NOT NULL,
+	phoneNo CHAR(14) NOT NULL,
+	email VARCHAR(50) NULL,
+	empType VARCHAR(20) NOT NULL,
+	CONSTRAINT PK_Employee_empId PRIMARY KEY (empId)
+);
+GO
+
+CREATE TABLE Disease
+(
+	dId INT NOT NULL,	
+	dName VARCHAR(100) NOT NULL,
+	dCategoryId CHAR(2) NULL,
+	dCategory VARCHAR(50) NOT NULL,
+	dType VARCHAR(40) NOT NULL,
+	CONSTRAINT PK_Disease_dId PRIMARY KEY (dId),
+	CONSTRAINT CHK_Disease_dCategoryId CHECK (dCategoryId LIKE '[A-Z][0-9]')
+);
+GO
+
+
+
+CREATE TABLE Doctor
+(
+	empId CHAR(5) NOT NULL, 
+	docId CHAR(4) NOT NULL,
+	lisenceNo CHAR(11) UNIQUE NOT NULL,
+	lisenceDate DATE NOT NULL,
+	[rank] VARCHAR(25) NOT NULL,
+	specialization VARCHAR(50) NOT NULL,
+	CONSTRAINT PK_Doctor_docId PRIMARY KEY (docId),
+	CONSTRAINT FK_Doctor_Employee_empId FOREIGN KEY (empId) REFERENCES Employee (empId) ON DELETE CASCADE ON UPDATE CASCADE
+);
+GO
+
+
+CREATE TABLE Diagnosis
+(
+	diagnosisNo INT NOT NULL,
+	mrn CHAR(5) NOT NULL,
+	docId CHAR(4) NULL,
+	dId INT NOT NULL,
+	diagDate DATE DEFAULT GETDATE() NOT NULL,
+	diagResult VARCHAR(1000) NOT NULL,
+	CONSTRAINT PK_Diagnosis_diagnosisNo PRIMARY KEY (diagnosisNo),
+	CONSTRAINT FK_Diagnosis_Patient_mrn FOREIGN KEY (mrn) REFERENCES Patient(mrn),
+	CONSTRAINT FK_Diagnosis_Doctor_docId FOREIGN KEY (docId) REFERENCES Doctor(docId) ON DELETE SET NULL ON UPDATE CASCADE,
+	CONSTRAINT FK_Diagnosis_Disease_dId FOREIGN KEY (dId) REFERENCES Disease(dId)
+);
+GO
+
+
+
+CREATE TABLE PharmacyPersonel
+(
+	empId CHAR(5) NOT NULL,
+	pharmacistLisenceNo CHAR (11) NOT NULL,
+	lisenceDate DATE NOT NULL,
+	PCATTestResult INT NULL,
+	[level] VARCHAR (40) NOT NULL,
+	CONSTRAINT FK_PharmacyPersonel_empId FOREIGN KEY (empId) REFERENCES Employee (empId),
+	CONSTRAINT UQ_PharmacyPersonel_pharmacistLisenceNo UNIQUE (pharmacistLisenceNo)
+);
+GO
+
+
+CREATE TABLE Medicine
+(
+	mId SMALLINT NOT NULL,
+	brandName VARCHAR(40) NOT NULL,
+	genericName VARCHAR(50) NOT NULL,
+	qtyInStock INT NOT NULL,
+	[use] VARCHAR(50) NOT NULL,
+	expDate DATE NOT NULL,
+	unitPrice DECIMAL(6,2) NOT NULL,
+	CONSTRAINT PK_Medicine_mId PRIMARY KEY (mId)
+);
+GO
+
+
+
+CREATE TABLE Prescription
+(
+	prescriptionId INT NOT NULL,
+	diagnosisNo INT NOT NULL,
+	prescriptionDate DATE NOT NULL DEFAULT GETDATE(),
+	CONSTRAINT PK_Prescription_prescriptionId PRIMARY KEY (prescriptionId),
+	CONSTRAINT FK_Prescription_Diagnosis_diagnosisNo FOREIGN KEY (diagnosisNo) REFERENCES Diagnosis(diagnosisNo) 
+);
+GO
+
+
+
+CREATE TABLE MedicinePrescribed
+(
+	prescriptionId INT NOT NULL,
+	mId SMALLINT NOT NULL,
+	dosage VARCHAR(50) NOT NULL,
+	numberOfAllowedRefills TINYINT NOT NULL,
+	CONSTRAINT PK_MedicinePrescribed_prescriptionId_mId PRIMARY KEY(prescriptionId, mId),
+	CONSTRAINT FK_MedicinePrescribed_prescriptionId FOREIGN KEY (prescriptionId) REFERENCES Prescription(prescriptionId),
+	CONSTRAINT FK_MedicinePrescribed_mId FOREIGN KEY (mId) REFERENCES Medicine(mId)
+);
+GO
+
+
+
+-- Inserting data into tables of HRMS database, 
+
+
+INSERT INTO Disease 
+	VALUES (1, 'Anthrax', 'D1','Bacterial infections', 'Contageous'), 
+		   (2, 'Acquired hemophilia','D2','Blood Diseases','Type2'), 
+		   (3, 'Accessory pancreas ','D3','Digestive Diseases','xyz'),
+		   (4, 'Cholera ','D1', 'Bacterial infections', 'Contageous'),
+		   (5, 'Acatalasemia ', 'D2','Blood Diseases', 'Chronic'),
+		   (6, 'Acute fatty liver of pregnancy ','D3','Digestive Diseases','Non Contageous');
+GO
+
+
+
+INSERT INTO Medicine 
+	VALUES (1, 'Xaleto','Rivaroxi...', 200, 'Anticoagulant', '2022-12-31', 67.99), 
+		   (2, 'Eliquis', 'Apiza...',500, 'ACE inhitor', '2021-06-06', 23.49),
+		   (3, 'Tran..Acid', 'Inhibitor', 600, 'Something','2020-12-31', 9.99),
+		   (4, 'Fosamax', 'alendronate tablet', 200, 'treat certain types of bone loss in adults','2022-12-31',58),
+		   (5, 'Hexalen capsules','altretamine',150,'Ovarian cancer','2020-12-31',26),
+		   (6, 'Prozac','Fluoxetine...', 125, 'Anti-depressent', '2019-12-31', 43.99),
+		   (7, 'Glucofage','Metformine...', 223, 'Anti-Diabetic', '2019-10-13', 22.99),
+		   (8, 'Advil', 'Ibuprofine', 500, 'Pain killer', '2023-01-01', 0.10),
+		   (9, 'Amoxy','Amoxilcillin', 2000, 'Antibiotics', '2021-12-31', 0.20 );
+GO
+
+
+INSERT INTO Patient
+	VALUES	('PA001', 'Kirubel', 'Wassie', '09-12-1985', 'kki95', 'M','031-56-3472','2578 kk st', 'Alexandria', 'VA', '22132','2018-01-01'),
+			('PA002', 'Harsha', 'Sagar', '11-19-1980', 'wes41', 'F','289-01-6994','3379 bb st', 'Miami', 'FL', '19376','2017-09-02'),
+			('PA003', 'Fekadu', 'Gonfa', '05-20-1990', 'oi591', 'M','175-50-1235','1538 ff st',  'Seattle', 'WA', '35800','2018-01-01'),
+			('PA004', 'Arsema', 'Negera', '01-25-1978', 'iuu53', 'F','531-31-3308','2928 aa st', 'Silver Spring', 'MD', '51763','2017-02-01'),
+			('PA005', 'John', 'Craig', '12-31-1965', 'iu979', 'M','231-61-8422','1166 jj st', 'Alexandria', 'VA', '22132','2019-01-03'),
+			('PA006', 'Maria', 'Michael', '08-12-1979', 'mk216', 'F', '786-32-0912','7866 mm st', 'Silver Spring', 'MD', '51763','2018-01-01'),
+			('PA007', 'Derek', 'Nagaraju', '02-18-1975', 'sd025', 'M','120-21-6743','8889 ff st', 'Silver Spring', 'MD', '51763','2019-02-20'),
+			('PA008', 'Birtukan', 'Wale', '01-27-1989', 'is489', 'F','013-32-6789','5464 bb st', 'Seattle', 'WA', '35800','2018-01-05'),
+			('PA009', 'Yehualashet', 'Lemma', '05-15-1983', 'kl526', 'M', '745-21-0321','3338 yy st', 'Miami', 'FL', '19376','2018-01-01'),
+			('PA010', 'Selam', 'Damtew', '09-22-1970', 's5561', 'F', '300-00-2211','4651 ss st', 'Huston', 'TX', '11156','2018-09-10'),
+			('PA011', 'Simon', 'Kifle', '08-11-1968', 'dc256', 'M', '333-44-5555','2287 sk st', 'Springfield', 'VA', '22132','2018-01-01'),
+			('PA012', 'Nany', 'Tekle', '08-25-1970', 'po724', 'F', '222-88-4444','1313 nt st', 'Springfield', 'VA', '22132','2019-03-01'),
+			('PA013', 'Adane', 'Belay', '11-16-1984', 'sa366', 'M', '001-22-3216','4687 ab st', 'Seattle', 'WA', '35800','2017-02-02'),
+			('PA014', 'Genet', 'Misikir', '05-28-1982', 'l8773', 'F', '999-44-2299','00468 gm st', 'Richmond', 'VA', '55982','2017-11-12'),
+			('PA015', 'Mikiyas', 'Tesfaye', '01-15-1979', 'w6321', 'M', '221-90-8833','5090 mt st', 'Alexandria', 'VA', '22132','2017-11-12')
+GO
+
+
+
+INSERT INTO Employee 
+	VALUES ('EMP01', 'Neftalem', 'Medhanie', '050-23-1111', '1971-10-07','M',78000,'2017-03-02','1293 Duncan Avenue', '198','Rockville', 'MD','20871', '(707) 890-3212', 'nef@yahoo.com','P'),
+		   ('EMP02', 'Mark', 'Lewis', '060-23-2222', '1972-09-12','M',67500,'2018-12-02','4080 Marshall Street', '800','Washington', 'DC','20021', '(202) 890-9032', 'mark@gmail.com','C'),
+		   ('EMP03', 'Dennis', 'Price', '060-21-3333', '1973-10-09','F',89800,'2016-03-02','1331 Edsel Road', 'L21','Woodbridge', 'VA','20321', '(570) 000-2112', 'kathe@gmail.com','M'),
+		   ('EMP04', 'Robert', 'Iversen', '070-23-4444', '1974-07-01','M',100000,'2017-09-01','786 Eagle Lane', '234','Columbia', 'MD','20990', '(301) 890-3200', 'rob@yahoo.com','P'),
+		   ('EMP05', 'Rosie', 'Seiler', '080-23-5555', '1975-03-07','F',79300,'2016-03-02','123 Ky St', '698','Bethesda', 'MD','20871', '(332) 890-3212', 'rosie@yahoo.com','A'),
+		   ('EMP06', 'Emmanuel', 'Kepa', '908-23-6666', '1985-09-15','M',89800,'2018-12-02','5 Poe Lane', '832','Washington', 'DC','20021', '(204) 890-9032', 'emma@gmail.com','A'),
+		   ('EMP07', 'Andrew', 'Neftalem', '090-21-7777', '1986-11-03','M',100100,'2015-03-02','1378 Gateway Road', '823','Alexandia', 'VA','20321', '(703) 000-2112', 'dennisned@gmail.com','A'),
+		   ('EMP08', 'Liang', 'Porter', '111-23-8888', '1987-01-01','M',78000,'2017-09-01','825 Victoria Street', '109','Columbia', 'MD','20990', '(249) 890-3200', 'lian@yahoo.com','P'),
+		   ('EMP09', 'Sarah', 'Kathrin', '222-23-9999', '1988-03-18','F',90800,'2014-03-02','1389 Finwood Road', '007','Germantown', 'MD','20871', '(191) 890-3212', 'rosie@yahoo.fr','P'),
+		   ('EMP10', 'Christopher', 'Rasmussen', '333-23-0000', '1989-03-23','M',62000,'2018-12-02','3520 Nash Street', '002','Washington', 'DC','20021', '(320) 890-9032', 'chris@gmail.com','C'),
+		   ('EMP11', 'Ruth', 'Kumar', '444-21-1122', '1990-11-24','F',90200,'2019-03-02','4656 Byrd Lane', 'L21','Arlington', 'VA','20321', '(521) 000-2112', 'ruth@gmail.com','A'),
+		   ('EMP12', 'Stefan', 'Xu', '444-23-2233', '1990-09-01','M',68000,'2013-09-01','3583 Stadium Drive', '100','Beltsville', 'MD','20990', '(260) 890-3200', 'stef@yahoo.com','M'),
+		   ('EMP13', 'Jessamine', 'Seiler', '555-23-3344', '1982-11-28','F',90200,'2018-03-02','1337 Havanna Street', '498','Clarksburg', 'MD','20871', '(101) 890-3212', 'jes@yahoo.co.uk','M'),
+		   ('EMP14', 'Enza', 'Kepa', '666-23-4455', '1990-09-30','F',85300,'2011-12-02','2780 Irish Lane', NULL,'Washington', 'DC','20021', '(511) 890-9032', 'enz@gmail.com','C'),
+		   ('EMP15', 'Andrew', 'Kumar', '777-21-5566', '1983-10-25','M',120800,'2010-03-02','3048 James Avenue', 'L21','Fairfax', 'VA','20321', '(911) 000-2112', 'andkum@gmail.com','P'),
+		   ('EMP16', 'Ermias', 'Henriksen', '888-23-6677', '1983-09-16','M',78000,'2017-09-01','714 Chicago Avenue', NULL,'Laurel', 'MD','20990', '(199) 890-3200', 'ermias@yahoo.com','P'),
+		   ('EMP17', 'Petra', 'Seiler', '123-23-3456', '1980-09-07','F',45000,'2018-03-02','123 Ky St', '198','Clarksburg', 'MD','20871', '(101) 890-3212', 'ps@yahoo.com','P'),
+		   ('EMP18', 'Peter', 'Kepa', '908-23-3432', '1990-09-07','M',72300,'2018-12-02','907 12 St', NULL,'Washington', 'DC','20021', '(201) 890-9032', 'pk@gmail.com','C'),
+	       ('EMP19', 'Dennis', 'Kumar', '093-21-3456', '1983-10-03','M',120800,'2019-03-02','123 Ky St', 'L21','Manassas', 'VA','20321', '(571) 000-2112', 'dk@gmail.com','P'),
+		   ('EMP20', 'Gang', 'Xu', '903-23-9056', '1983-09-01','M',79300,'2017-09-01','213 Coles rd', NULL,'Columbia', 'MD','20990', '(240) 890-3200', 'gxu@yahoo.com','P');
+GO
+
+
+INSERT INTO Doctor 
+	VALUES  ('EMP10','MD01', 'KNO-09-6667','2017-09-10', 'Senior','Infectious Disease'),
+			('EMP12','MD02', 'BAV-00-9456','2016-08-10', 'senior','Family medicine'),
+			('EMP04','MD03', 'LIC-22-0678', '2015-12-31','Senior','Intenal Medicine'),
+			('EMP17','MD04', 'KAL-16-5420','2018-09-03','Junior','Cardiologist'),
+		    ('EMP15','MD06', 'XYZ-66-7600','2017-02-5', 'Junior','Infectious Disease');
+GO
+
+
+
+
+INSERT INTO Diagnosis 
+	VALUES (1, 'PA003', 'MD03', 1, '2017-11-06', 'Positive'),
+		   (2, 'PA009', 'MD02', 5, '2018-02-06', 'Positive'),
+		   (3, 'PA012', 'MD01', 2, '2015-09-04', 'Negative'),
+		   (4, 'PA005', 'MD02', 3, '2019-11-06', 'Negative'),
+		   (5, 'PA014', 'MD04', 4, '2014-10-04', 'Negative'),
+		   (6, 'PA001', 'MD02', 5, '2017-10-04', 'Positive'),
+		   (7, 'PA004', 'MD01', 6, '2016-11-04', 'Positive'),
+		   (8, 'PA011', 'MD03', 2, '2016-11-04', 'Positive'),
+		   (9, 'PA001', 'MD04', 2, GETDATE(),'Positive'),
+		   (10,'PA002', 'MD03', 3, GETDATE(),'Not conclusive'),
+		   (11,'PA003', 'MD02', 3, GETDATE(),'Negative'),
+		   (12,'PA004', 'MD01', 3, GETDATE(),'Not conclusive'),
+		   (13,'PA005', 'MD02', 2, GETDATE(),'Positive'),
+		   (14,'PA006', 'MD03', 2, GETDATE(),'Not conclusive'),
+		   (15,'PA007', 'MD04', 1, GETDATE(),'Positive'),
+		   (16,'PA008', 'MD03', 3, GETDATE(),'Not conclusive');
+GO
+
+
+
+INSERT INTO Prescription 
+	VALUES (10, 1, '2019-01-02'),
+		   (11, 2, '2017-06-02'),
+		   (12, 3, '2018-01-02'),
+		   (13, 9, '2019-04-2'),
+		   (14, 13, '2016-09-12'),
+		   (15, 7, '2019-03-25'), 
+		   (16, 14, '2019-03-26'), 
+		   (17, 16, '2019-03-27'), 
+		   (18, 8, '2019-03-26');
+GO
+
+
+
+INSERT INTO MedicinePrescribed 
+	VALUES (10, 3,'As you wish', 10),
+		   (14, 2,'As you wish', 12),
+		   (12, 5,'As you wish', 6),
+		   (11, 1,'As you wish', 9),
+		   (13, 4,'As you wish', 7),
+		   (18, 4, '3 times daily', 3),
+		   (17, 3, '2 times daily', 2),
+		   (10, 5, '2 times a day', 3), 
+		   (12, 1, '3 times daly', 2);
+GO
+
+
+
+INSERT INTO PharmacyPersonel 
+	VALUES ('EMP02', 'GP-003', '2012-02-06', 86, 'Senior'),
+		   ('EMP06', 'CP-073', '2014-04-13', 93, 'Junior'),
+		   ('EMP08', 'AB-099', '2017-02-16', 93, 'Junior');
+GO
+
+
+
+
+/****************** The SELECT Statement *****************************
+
+SELECT statement
+	- SELECT statement is used to query tables and views,
+
+SYNTAX :
+	SELECT select_list [ INTO new_table ]
+	[ FROM table_source ] 
+	[ WHERE search_condition ]
+	[ GROUP BY group_by_expression ]
+	[ HAVING search_condition ]
+	[ ORDER BY order_expression [ ASC | DESC ] ]
+
+
+Has has the following clauses inside, 
+	- FROM clause
+		: specifies the source of data, table or view
+	- WHERE clause
+		: search condition / criteria 
+	- GROUP BY clause
+		: group by list
+	- HAVING clause
+		: search condition / criteria for out put of GROUP BY clause
+	- ORDER BY clause
+		: specify the condition to sort results
+
+Sequence of execution/evaluation of SELECT statement. 
+	1st : FROM clause
+	2nd : WHERE clause
+	3rd : GROPU BY clause
+	4th : HAVING clause
+	5th : SELECT 
+	6th : ORDER BY clause
+
+IMPORTANT : To avoid erros in tables/views name resoulution, it is best to include
+	        schema and object name
+
+			If the table/view contains irregular characters such as spaces or other 
+			special characters, you need to delimit, or enclose the name, either by 
+			using " " or [ ]
+
+			End all statements with semicolon (;) character. It is optional to use semi
+			colon to terminate SELECT statement, however future versions will require 
+			its use, therefore you should adopt the practice.
+*/
+
+
+
+--EXERCISE # 01
+--Write SELECT statement to retrive the entire columns of Employee table by explicitly listing each column.
+--NOTE (1) List all the columns to be retrived on SELECT statement
+--NOTE (2) The name of each column must be separated by comma
+SELECT empId,empFName,empLName,SSN,DoB,gender,salary,employedDate,strAddress,apt,city,[state],zipCode,phoneNo,email,empType
+FROM DBO.Employee
+
+
+
+--EXERCISE # 02 
+--Repeat the previous exercise, but SSN and DoB must be displated as the 1st and 2nd column
+--NOTE : The order of columns list determine their display, regardless of the order of defination in source table.
+SELECT SSN,DoB,empId,empFName,empLName,gender,salary,employedDate,strAddress,apt,city,[state],zipCode,phoneNo,email,empType
+FROM DBO.Employee
+
+
+
+--EXERCISE # 03 
+--Write SELECT statement to retrive the entire columns of Employee table using "star" character (*)
+--NOTE : This method is frequently used for quick test, refrain using this short cut in production environment
+SELECT *
+FROM DBO.Employee
+
+
+
+--EXERCISE # 04 
+--Write SELECT statement to retrive empId, empFName, empLName, phoneNo and email columns of Employee table.
+SELECT empFName, empFName, empLName, phoneNo, email
+FROM DBO.Employee
+
+
+
+
+/*
+--SELECT statement can be used to perform calculations and manipulation of data
+	Operators, 
+		'+' : Adding or Concatinate
+		'-' : Subtract
+		'*' : Multiply
+		'/' : Divide
+		'%' : Modulo
+	The result will appear in a new column, repeated once per row of result set
+	Note : Calculated expressions must be Scalar, must return only single value
+	Note : Calculated expressions can operate on other colums in the same row
+*/
+
+
+
+--EXAMPLE : 
+--Calculate the amount each type of medicine worth in stock
+SELECT brandName, qtyInStock,unitPrice, qtyInStock*unitPrice
+from Medicine
+
+
+
+--EXERCISE # 05 
+--The unit price of each medicine is increased by 6%. Provide the list of medecine with 
+--their respective rise in price.
+SELECT brandName, unitPrice, 0.06*unitPrice
+from Medicine
+
+
+
+--EXERCISE # 06
+--Calculate and display the old and new prices for each medicine 
+SELECT brandName, unitPrice, (1+0.06)*unitPrice
+from Medicine
+
+
+
+--'+' Can be used to as an operator to concatenate (linked together as in a chain) the content of columns
+--EXAMPLE : Get Employee Full Name of all employees
+SELECT empFName +' '+ empLName AS [Full Name]
+FROM Employee
+
+
+
+
+--EXERCISE # 07
+--Write a code to display employee's Full Address, and Phone Number
+SELECT empid, strAddress +' '+city+', '+[state]+' '+zipCode AS [Full Address], phoneNo
+FROM Employee
+
+
+
+
+--CONCAT Function
+--Is string function that joins two or more string values in an end-to-end manner.
+--SYNTAX: CONCAT ( string_value1, string_value2, string_value2, ...)
+--EXAMPLE : Write a code to display the Full Name of all employees using CONCAT function
+SELECT empid, CONCAT(empFName ,' ',empLName) AS [Full Name]
+FROM Employee
+
+
+
+
+--EXERCISE # 08
+--Write a code to display employee's Full Address, and Phone Number using CONCAT function
+SELECT EMPId, CONCAT(strAddress,' ',city, ', ',[state],' ',zipCode) AS [Full Address], phoneNo
+FROM Employee
+
+
+
+/*
+DISTINCT statement
+	SQL query results are not truly relational, are not always unique, and not guranteed order
+	Even unique rows in a source table can return duplicate values for some columns
+	DISTINCT specifies only unique rows to apper in result set
+--
+*/
+
+
+
+--EXAMPLE :
+--Write a code to retrive the year of employement of all employees in Employee table
+SELECT YEAR(employedDate) AS [HIRED YEAR]
+FROM EMPLOYEE
+
+
+
+--Notice there are redudant instances on the result set. Execute the following code
+--and observer the change of result set
+SELECT DISTINCT YEAR(employedDate) AS [HIRED YEAR]
+FROM EMPLOYEE
+
+
+
+--EXERCISE # 09
+--Write a code that retrive the list of dosages from MedicinePrescribed table, use DISTINCT to eliminate duplicates
+SELECT DISTINCT dosage FROM MedicinePrescribed
+
+
+
+/*
+Column Aliases
+	- At data display by SELECT statement, each column is named after it's source.
+	- However, if required, columns can be relabeled using aliases
+	- This is useful for columns created with expressons
+	- Provides custom column headers.
+
+Table Aliases
+	- Used in FROM clause to provide convenient way of refering table elsewhere 
+	  in the query, enhance readability 
+
+*/
+
+
+
+--EXAMPLE : 
+--Display all columns of Disease table with full name for each column
+SELECT dId AS [Diease ID], dName AS [Diease Name], dCategory AS [Diease Category], dType AS [Diease Type]
+FROM Disease
+
+
+
+
+--EXERCISE # 10 
+--Write the code to display the 10% rise on the price of each Medicine, use appropriate column alias for comoputed column
+SELECT brandName, unitPrice, 0.1*unitPrice AS [Price Raise]
+from Medicine
+
+
+
+--EXERCISE # 11
+--Modify the above code to include the new price column with the name 'New Price'
+SELECT brandName, unitPrice, 0.1*unitPrice AS [Price Raise],(1+0.1)*unitPrice as [New Price]
+from Medicine
+
+
+
+--EXAMPLE :
+--Using '=' signs to assign alias to columns
+SELECT brandName, [Price Raise]=unitPrice*0.6
+from Medicine
+
+
+
+--EXERCISE # 12
+--Use '=' to assign alias for the new price of all medecines with price rise by 13%
+SELECT brandName, unitPrice, [New Price] = (1+0.1)*unitPrice
+from Medicine
+
+
+
+--EXAMPLE :
+--Using built in function on a column in the SELECT list. Note the name of column is used as input for the function
+SELECT EMPID, EMPFNAME, EMPLNAME, DOB,YEAR(employedDate) AS [HIRED YEAR]
+FROM EMPLOYEE
+
+
+--EXAMPLE : 
+--Write a code to display the the first name and last name of all patients. Use table alias to refer the columns
+SELECT P.pFName, P.pLName
+FROM Patient AS P
+
+
+
+--EXERCISE # 13 
+--Assign the appropriate aliases for columns displayed on previous exercise. 
+SELECT P.pFName AS [First Name], P.pLName AS [Last Name]
+FROM Patient AS P
+
+
+
+/*
+Logical Processing Order on Aliases
+	- FROM, WHERE, and HAVING clauses process before SELECT 
+	- Aliases created in SELECT clauses only visible to ORDER BY clause
+	- Expressions aliased in SELECT clause may be repeated elsewere in query
+*/
+
+
+
+--EXAMPLE
+--The following code will run free from error, since alias dicleration done before alias used by ORDER BY clause
+SELECT empId AS [Employee ID], empFName AS [Fisrt Name], empLName AS [Last Name ]
+FROM Employee
+ORDER BY [Employee ID]
+
+
+
+
+--EXAMPLE
+--The following code will errr out, since alias decleration done after the execution of WHERE clause
+SELECT empId AS [Employee ID], empFName AS [Fisrt Name], empLName AS [Last Name ]
+FROM Employee
+WHERE [First Name] LIKE 'R%'
+
+
+
+
+/*
+Simple CASE Expression
+	- Can be used in SELECT, WHERE, HAVING AND ORDER BY clauses
+	- Extends the ability of SELECT clause to manipulate data as it is retrived
+	- CASE expression returns a scalar (single-valued) value based on conditional logic
+
+	- In SELECT clause, CASE behaves as calculated column requiring an alias
+	- Forms of CASE expressions
+		- Simple CASE
+			: Compares one value to list of possible values, returns first match
+		- Searched CASE
+			 : Evaluate a set of logical expressions & returns value found in THEN clause
+*/
+
+--EXAMPLE : 
+--Simple CASE 
+SELECT dId, dName,dCategoryId, 
+		CASE dCategoryId
+		WHEN 'D1' THEN 'Bacterial infections'
+		WHEN 'D2' THEN 'Blood Diseases'
+		WHEN 'D3' THEN 'Digestive Diseases'
+		ELSE 'NO CATEGORY'
+		END AS CATEROGY 
+FROM Disease
+
+
+--EXAMPLE : 
+--Searched CASE
+SELECT EMPID, empFName, empLName,salary,  
+		CASE
+		WHEN (salary<=35000) THEN 'Low Income'
+		WHEN (salary<=60000) THEN 'Mid Income'
+		WHEN (salary>60000) THEN 'High Income'
+		ELSE 'No Category'
+		END AS CATEROGY 
+FROM Employee
+
+select * from Medicine
+
+--EXERCISE # 14 
+--Use simple CASE to list the brand names of medecines available as per Medecine Id
+SELECT mId,genericName, 
+		CASE mId
+		WHEN '1' THEN 'Xaleto'
+		WHEN '2' THEN 'Eliquis'
+		WHEN '3' THEN 'Tran...Acid'
+		WHEN '4' THEN 'Fosamax'
+		WHEN '5' THEN 'Hexalen capsules'
+		WHEN '6' THEN 'Prozac'
+		WHEN '7' THEN 'Glucofag'
+		WHEN '8' THEN 'Advil'
+		WHEN '9' THEN 'Amoxy'
+		ELSE 'NO Brand'
+		END AS [BRAND NAME] 
+FROM Medicine
+
+
+
+--EXERCISE # 15 
+--Searched CASE to identify label the price of a medicine cheap, moderate and expensive. Price of cheap ones
+--is less than 15 USD, and expensive ones are above 45 USD. Display Medecine Id, Generic Name, the unit price and 
+--category of the price.  
+SELECT mId, genericName,unitPrice, 
+		CASE
+		WHEN (unitPrice<=15) THEN 'Cheap'
+		WHEN (unitPrice<=45) THEN 'Moderate'
+		WHEN (unitPrice>45) THEN 'Expensive'
+		ELSE 'No Category'
+		END AS CATEROGY 
+FROM Medicine
+
+
+/*
+SORTING DATA
+	- Used to desplay the output of a query in certain order
+	- Sorts rows in results for presentation purpose
+	- Uses ORDER BY clause
+	- ORDER BY clause
+		 - The last clause to be logically processed in SELECT statement
+		 - Sorts all NULLs together
+		 - Refers to columns by name, alias or ordinal position (not recommended)
+		 - Declare sort order with ASC or DESC
+
+	- SYNTAX :
+			SELECT <select_list>
+			FROM <table_source>
+			ORDER BY <order_by_list> [ASC|DESC]
+*/
+
+
+--ORDER BY clause using column names
+--EXAMPLE : Retrive details of Employees in assending order of their first names
+SELECT E.empId, E.empFName, E.empLName, E.SSN, E.DoB
+FROM Employee AS E
+ORDER BY E.empFName ASC
+
+
+
+
+--EXERCISE # 16
+--Write a code to retrive details of Patients in assending order of last names 
+SELECT P.mrn, P.pFName, P.pLName
+FROM Patient AS P
+ORDER BY P.pLName
+
+
+
+
+--EXERCISE # 17 
+--Write a code to retrive details of Employees in descending order of DoB
+--Note : Use column alias on ORDER BY clause
+SELECT empId, empFName, empLName, SSN, DoB AS [DATE OF BIRTH]
+FROM Employee
+ORDER BY [DATE OF BIRTH] DESC
+
+
+
+--EXAMPLE :
+--ORDER BY clause can uses more than one column
+SELECT E.empFname, E.empLName, E.empId, E.DoB
+FROM Employee as E
+ORDER BY E.empFName,E.empLName
+
+
+
+
+--EXERCISE # 18
+--Display the list of Patients in the order of the year of their treatement. Use their First name to order the ones that came 
+--to the hospital on same year. 
+SELECT PATIENT.mrn,YEAR(registeredDate),Patient.pFName
+FROM Patient
+ORDER BY YEAR(registeredDate),PATIENT.pFName
+
+
+
+
+/*
+FITERING DATA
+	- Used to retrive only a subset of all rows stored in the table
+	- WHERE clause is used to limit which rows to be retured
+	- Data filtered server-side, can reduce network trafic and client memory usage
+
+	-WHERE clause 
+		- use predicates, expressed as logical conditions
+		- rows which predicate evaluates to TRUE  will be accepted
+		- rows of FALSUE or UNKNOWNS filitered out
+		- in terms of precidence, it follows FROM clause
+    *** - can't see the alias declared in SELECT clause
+		- can be optimized to use indexes
+		 
+	SYNTAX : (WHERE clause only )
+			WHERE <search_condition>
+
+		- PREDICATES and OPERATORS
+			- IN : Determines whether a specified value matches any value in the subquery or list
+			- BETWEEN : Specifies an inclusive range to test
+			- LIKE : Determines whether a specific character string matches a specified pattern
+			- AND : Combines two Boolean expressions and returns TRUE only when both are TRUE
+			- OR : Combines two boolean expressions and returns TRUE if either is TRUE.
+			- NOT : Reverses the result of a search condition. 
+
+*/
+
+--EXAMPLE :
+--Find below a code to get Employee information (across all columns) - who are contractors,
+--Note : P: Principal Associate, A: Associate, C: Contractor, M:Manager
+SELECT * 
+FROM Employee
+WHERE empType = 'C'
+
+
+
+
+--EXAMPLE :
+--Find below a code to get Employee information (across all columns) -  for Contract and Associate
+SELECT * 
+FROM Employee
+WHERE empType IN ('C','A')
+
+
+
+--EXERCISE # 19
+--Find the list of employees with salary above 90,000
+SELECT *
+FROM Employee
+WHERE salary > 90000;
+
+
+
+--EXERCISE # 20
+--Find the list of employees with salary range betwen 85,000 to 90,000 inclusive
+SELECT *
+FROM Employee
+WHERE salary BETWEEN 85000 AND 90000;
+
+
+
+
+--EXERCISE # 21
+--Find the list of patients that had registration to the hospital in the year 2018
+--Use 'BETWEEN' operator
+SELECT *
+FROM Patient
+WHERE registeredDate BETWEEN '2018-01-01' AND '2018-12-31'
+
+
+
+
+--EXERCISE # 22
+--Get Employees born in the year 1980 (from 1980-01-01 - 1980-12-31)using 'BETWEEN' operator
+SELECT *
+FROM Employee
+WHERE DoB BETWEEN '1980-01-01' AND '1980-12-31'
+
+
+
+
+--EXERCISE # 23
+--Get Employees born in the year 1980 using 'AND' operator
+SELECT *
+FROM Employee
+WHERE DoB >= '1980-01-01' AND DoB <= '1980-12-31'
+
+
+
+
+--We can also use the YEAR() function to do the same for the above exercise - but it is NOT recommended
+SELECT *
+FROM Employee
+WHERE YEAR(DoB) = 1980
+
+
+
+
+--EXERCISE # 24
+--Write a code that retrives details of Patients that live in Silver Spring.
+SELECT *
+FROM Patient
+WHERE City='Silver Spring';
+
+
+
+
+--EXERCISE # 25
+--Write a code retrive the information of contractor Employees with salary less than 75000.
+SELECT * 
+FROM Employee
+WHERE empType = 'C' AND salary < 75000
+
+
+
+
+--EXERCISE # 26
+--Write a code to retrive list of medicines with price below 30 USD.
+SELECT *
+FROM Medicine
+WHERE unitPrice < 30
+
+
+
+--EXERCISE # 27
+--Write a code to retrive patients that live in Miami and Seattle
+SELECT *
+FROM Patient
+WHERE CITY ='Miami' OR CITY='Seattle'
+
+
+
+
+--EXERCISE # 28
+--Write a code to retrive patients that are not living in Silver Spring
+SELECT *
+FROM Patient
+WHERE NOT CITY ='Silver Spring';
+
+
+
+/*
+
+STRING FUNCTIONS
+
+	- CONCATENATE
+		- Returns a character string that is the result of concatenating string_exp2 to string_exp1. 
+		- SYNTAX
+			CONCAT( string_exp1,string_exp2)
+
+	- LEFT
+		- Returns the leftmost count characters of string_exp.
+		- SYNTAX
+			LEFT( string_exp, count)
+
+	- RIGHT
+		- To extract a substring from a string, starting from the right-most character.
+		- SYNTAX
+			RIGHT( string, number_of_characters )
+
+	- CHARINDEX
+		- returns the location of a substring in a char/string, from the left side.
+		- The search is NOT case-sensitive.
+		- SYNTAX :
+			CHARINDEX( substring, string, [start_position] )
+			
+	-LENGTH
+		- Returns the number of characters in string_exp, excluding trailing blanks.
+		- SYNTAX
+			LENGTH(string_exp )
+
+	-LTRIM function
+		- removes all space characters from the left-hand side of a string.
+		- SYNTAX
+			LTRIM( string_exp )
+
+Check the following link for complete list of String Functions
+
+	https://docs.microsoft.com/en-us/sql/odbc/reference/appendixes/string-functions?view=sql-server-2017
+
+*/
+
+
+
+--EXERCISE # 29
+--Write a code to display full name for employees
+SELECT	CONCAT(empFName ,' ',empLName) AS [Full Name]
+FROM Employee
+
+
+
+
+--EXERCISE : 30
+--Get the last four digists of SSN of all Employees together with their full name
+SELECT	CONCAT(empFName ,' ',empLName) AS [Full Name], RIGHT(SSN, 4) AS [Last four SSN]
+FROM Employee
+
+
+
+
+--EXERCISE # 31
+--Write a code to retrive the full name and area code of their phone number, use Employee table
+SELECT	CONCAT(empFName ,' ',empLName) AS [Full Name], LEFT(phoneNo, 5) AS [Phone Area Code]
+FROM Employee
+
+
+
+
+--EXERCISE # 32
+--Write a code to retrive the full name and area code of their phone number, (without a bracket). use Employee table
+SELECT	CONCAT(empFName ,' ',empLName) AS [Full Name], RIGHT(SSN, 4) AS [Last four SSN], RIGHT(LEFT(phoneNo, 4),3) AS [Phone Area Code]
+FROM Employee
+
+
+
+
+--EXAMPLE # 33
+--Run the following codes and explain the result with the purpose of CHARINDEX function
+SELECT CHARINDEX('O', 'I love SQL')
+
+
+
+
+--EXERCISE # 34
+--Modify the above code, so that the output/result will have appopriate column name
+SELECT CHARINDEX('O', 'I love SQL') AS [Index for letter 'O']
+
+
+
+
+--EXAMPLE # 35
+--Write a code that return the index for letter 'q' in the sentence 'I love sql'
+SELECT CHARINDEX('q', 'I love SQL') [Index for letter 'Q']
+
+
+
+
+--EXERCISE # 36
+--Use the CHARINDEX() function to retrieve the house(building) number of all our employees
+SELECT	CONCAT(empFName ,' ',empLName) AS [Full Name], LEFT(strAddress, CHARINDEX(' ', strAddress)-1) AS [Building Number]
+FROM Employee
+
+
+
+
+--EXAMPLE : 
+--Run the following code and explain the result with the purpose of LEN function
+SELECT LEN('I love SQL')
+
+
+
+
+--EXAMPLE : 
+--Reterive the email's domain name for the entiere employees. 
+--NOTE : Use LEN(), CHARINDEX() and RIGHT()
+SELECT CONCAT(empFName ,' ',empLName) AS [Full Name], RIGHT (email, (LEN(email) - CHARINDEX('@', email))) AS [Email Domain]
+FROM Employee
+
+
+
+
+--EXERCISE # 37
+--Assign a new email address for empId=EMP05 as 'sarah.Kathrin@aol.us'
+UPDATE Employee
+SET email = 'sarah.Kathrin@aol.us'
+WHERE empId = 'EMP05'
+
+
+
+
+--EXERCISE # 38
+--Using wildcards % and _ ('%' means any number of charactes while '_' means single character)
+--mostly used in conditions (WHERE clause or HAVING clause)
+--Get Employees whose first name begins with the letter 'P'
+SELECT *
+FROM Employee
+WHERE empFName LIKE 'P%'
+
+
+
+--EXERCISE # 39
+--Get the list of employees with 2nd letter of their frst name is 'a'
+SELECT *
+FROM Employee
+WHERE empFName LIKE '_a%'
+
+
+
+
+--EXERCISE # 40
+--Get full name of employees with earning more than 75000. (Add salary information to result set)
+SELECT	CONCAT(empFName ,' ',empLName) AS [Full Name], salary
+FROM Employee
+WHERE salary < 75000.00
+
+
+
+--EXERCISE # 41
+--Get Employees who have yahoo email account
+--NOTE : the code retrives only the list of employee's with email account having 'yahoo.com'
+SELECT * 
+FROM Employee
+WHERE email LIKE '%yahoo.com' 
+
+
+
+
+--EXERCISE # 42
+--Get Employees who have yahoo email account
+--NOTE : Use RIGHT string function. 
+SELECT *
+FROM Employee
+WHERE RIGHT(email, 9) = 'yahoo.com' -- only if yahoo.com
+
+
+
+--EXERCISE # 43
+--Get Employees who have yahoo email account
+--NOTE : The code must checke only 'yahoo' to retrive the entire employees with yahoo account
+SELECT * 
+FROM Employee
+WHERE email LIKE '%yahoo%' 
+
+
+
+
+--EXERCISE # 44 
+--Create a CHECK constraint on email column of Employee table to check if it's a valid email address
+--NOTE : Assume a valid email address contains the '@' character
+ALTER TABLE Employee
+ADD CONSTRAINT ck_Email_Validity CHECK(email LIKE '%@%')
+
+
+
+
+/*		Aggregate Functions
+	
+	COUNT() - returns the number of rows satisfying a given condition (conditions)
+	AVG() - Returns the arithimetic mean (Average) on a set of numeric values
+	SUM() - Returns the Sum of a set of numeric values
+	MIN() - Returns the Minimum from a set of numeric values
+	MAX() - Returns the Maximum from a set of numeric values
+	STDEV() - Returns the Standard Deveiation of a set of numeric values
+	VAR() - Returns the Variance of a set of numeric values
+*/
+
+
+
+SELECT * FROM Employee
+
+--EXERCISE # 45
+--Get total number of Employees
+SELECT COUNT(empId) AS [Number of Employees]
+FROM Employee
+
+
+
+--EXERCISE # 46
+--Get number of Employees not from Maryland
+SELECT COUNT(empId) AS [Number of Employees Not From Maryland]
+FROM Employee
+WHERE [state] NOT LIKE 'MD'
+
+--OR
+
+SELECT COUNT(empId) AS [Number of Employees Not From Maryland]
+FROM Employee
+WHERE NOT [state]='MD'
+
+
+
+--EXERCISE # 47
+--Get the number of Principal Employees, with emptype = 'P')
+SELECT COUNT(empId) AS [Principal Employees]
+FROM Employee
+WHERE empType = 'P'
+
+
+
+--EXERCISE # 48
+--Get the Minimum salary
+SELECT MIN(salary) AS [Minimum Salary]
+FROM Employee
+
+
+
+--EXERCISE # 49
+--Modify the above code to include the Minimum, Maximum, Average and Sum of the Salaries of all employees
+SELECT MIN(salary) [Minimum Salary], MAX(salary) [Maximum Salary], 
+	   CONVERT( DECIMAL(8,2), AVG(salary)) [Average Salary], SUM(salary) [Sum of Annual Salary]
+FROM Employee
+
+
+
+--EXERCISE # 50
+--Get Average Salary of Female Employees
+SELECT CONVERT( DECIMAL(8,2), AVG(salary)) [Female Average Salary]
+FROM Employee
+WHERE gender = 'F'
+
+
+
+--EXERCISE # 51
+--Get Average Salary of Associate Employees (empType = 'A')
+SELECT CONVERT( DECIMAL(8,2), AVG(salary)) [Associate Average Salary]
+FROM Employee
+WHERE empType = 'A'
+
+
+--EXERCISE # 52
+--Get Average salaries for each type of employees?
+SELECT empType, CONVERT( DECIMAL(8,2), AVG(salary)) [Average Salary]
+FROM Employee
+GROUP BY empType
+
+
+
+--EXERCISE # 53
+--Get Average Salary per gender
+SELECT gender, CONVERT( DECIMAL(8,2), AVG(salary)) [Average Salary]
+FROM Employee
+GROUP BY gender
+
+
+--EXERCISE # 54
+--Get Average Salary per sate of residence
+SELECT [state], CONVERT( DECIMAL(8,2), AVG(salary)) [Average Salary]
+FROM Employee
+GROUP BY [state]
+
+
+--EXERCISE # 55
+--Get Employees earning less than the average salary of all employees
+SELECT *
+FROM Employee
+WHERE salary < AVG(salary) -- this DOESN'T WORK!!!!!!
+
+
+/*
+NOTE : An aggregate may not appear in the WHERE clause unless it is in a subquery contained in a 
+       HAVING clause or a SELECT list, and the column being aggregated is an outer reference.
+
+SUBQUERIES
+	- Is SELECT statement nested within another query, (queries within queries)
+	- Can be Scalar, multi-valued, or table-valued
+		- Scalar subquery : return single value, outer queries handle only single result
+		- Multi-valued : return a column table, outer queries must be able to handle multipe results
+	- The result of inner query (subquery) are returned to the outer query
+	- Enables to enhance ability to create effective queries
+	- Can be either Self-Contained or Correlated
+	- Self-Contained
+		- have no dependency to outer query
+	- Correlated
+		- one or more column of subquery depends on the outer query.
+		- Inner query receives input from the outer query & conceptually executes once per row in it.
+		- Writing correlated subqueries
+			- if inner query is scalar, use comparision opetators as '=', '<', '>', and '<>'in	WHERE clause
+			- if inner query returns multi-values, use and 'IN' predicate 
+			- plan to handle 'NULL' results as required.
+
+*/
+
+
+--EXERCISE # 56
+--Note : The answer for the this exercise will be used as subquery to the next question )
+--Get the average salary of all employees
+SELECT CONVERT (DECIMAL(8,2), AVG(salary) ) [Average]
+FROM Employee
+
+
+
+
+--EXERCISE # 57
+--Get the list of employees with salary less than the average employee's salary
+--Note : Use a scalar subquery which is self contained to solve the problem
+SELECT *
+FROM Employee
+WHERE salary < (SELECT AVG(salary) FROM Employee)
+  
+
+
+
+
+--EXERCISE # 58 
+--Get list of Employees with earning less than the average salary of Associate Employees
+--Note : Use a scalar subquery which is self contained to solve the problem
+SELECT *
+FROM Employee
+WHERE salary < (SELECT AVG(salary) FROM Employee WHERE empType = 'A')
+
+
+
+
+
+--EXERCISE # 59 
+--Get Principal Employees earning less than the average of Contractors
+SELECT *
+FROM Employee
+WHERE empType = 'P' AND salary < (SELECT AVG(salary) FROM Employee WHERE empType = 'C')
+
+
+
+
+--EXERCISE # 60 
+--Get Principal Employees earning less than or equal to the average salary of Pricipal Employees
+SELECT *
+FROM Employee
+WHERE empType = 'P' AND salary <= (SELECT AVG(salary) FROM Employee WHERE empType = 'P')
+
+
+
+
+--EXERCISE # 61 
+--Get Contractors earning less than or equal to the average salary of Contractors
+SELECT *
+FROM Employee
+WHERE empType = 'C' AND salary <= (SELECT AVG(salary) FROM Employee WHERE empType = 'C')
+
+
+
+
+--EXERCISE # 62 
+--Get Associate Employees earning less than or equal to the average salary of Associate Employees
+SELECT *
+FROM Employee
+WHERE empType = 'A' AND salary <= (SELECT AVG(salary) FROM Employee WHERE empType = 'A')
+
+
+
+
+--EXERCISE # 63 
+--Get Managers earning less than or equal to the average salary of Managers
+SELECT *
+FROM Employee
+WHERE empType = 'M' AND salary <= (SELECT AVG(salary) FROM Employee WHERE empType = 'M')
+
+
+
+
+--EXERCISE # 64
+--Get the count of Employees based on the year they were born
+SELECT YEAR(DoB) AS [Year Born], COUNT(*) [Number of Employees]
+FROM Employee
+GROUP BY YEAR(DoB)
+
+
+
+
+--EXERCISE # 65
+--Get list of patients diagnoized by each doctor
+--NOTE : Use multi-valued subquery to get the list of doctors from 'Doctors' table
+SELECT docId,MRN,diagDate,diagResult
+FROM Diagnosis AS D
+WHERE D.docId IN ( 
+					SELECT distinct docId FROM Doctor
+				  )
+ORDER BY docId
+
+
+
+
+/*
+Note : Here is the logical structure of the outer query for the above example
+	   Subqueries that have multi-values will follow the same fashion
+	
+	SELECT docId,MRN,diagDate,diagResult
+	FROM Diagnosis AS D
+	WHERE D.docId IN ( MD01, MD02, MD03, MD04  )
+	ORDER BY DOCID
+
+*/
+
+
+
+
+--EXERCISE # 67
+--Get list of patients diagnoized for each disease type
+--NOTE : Use multi-valued subquery to get the list of disease from 'Disease' table
+SELECT Di.dId,Di.mrn
+FROM Diagnosis AS Di
+WHERE Di.dId IN ( SELECT DISTINCT D.dId 
+				 FROM Disease AS D
+				)
+ORDER BY Di.dId,Di.mrn
+					
+
+
+
+
+--EXAMPLE :
+--Get Employees who are earning less than or equal to the average salary of their gender
+--NOTE : Use correlated subquery
+SELECT *
+FROM Employee AS E
+WHERE E.salary <= (SELECT AVG(salary) FROM Employee AS D WHERE D.gender = E.gender)
+ORDER BY gender
+
+
+
+
+--EXERCISE # 68 
+--Retrieve all Employees earning less than or equal to their groups averages
+--NOTE : Use correlated subquery, 
+SELECT *
+FROM Employee E
+WHERE E.salary <= (SELECT AVG(salary) FROM Employee AS D WHERE D.empType = E.empType)
+ORDER BY empType
+
+
+
+
+--EXAMPLE
+--Better way to deal with previous exercise is to use 'JOIN', run the following and confirm 
+--try to analizye how the problem is sloved, the next section try to introduce about JOINing tables
+SELECT E.*, ETA.AVGSalary
+FROM Employee AS E JOIN 
+					(SELECT empType, AVG(salary) AS AVGSalary
+					 FROM Employee
+					 GROUP BY empType) AS ETA ON E.empType = ETA.empType
+WHERE E.salary <= ETA.AVGSalary
+
+
+
+/*
+Using 'EXISTS' Predicate with subqueries
+	- It evaluates whether rows exist, but rather than return them, it returns 'TRUE' or 'FALSE'
+	- Useful technique for validating data without incurring the overhead of retriving and counting the results
+	- Database engine optimize execution for query having this form
+*/
+
+
+--EXAMPLE
+--The following code uses 'EXIST' predicate to display the list of doctors that diagnose a patient
+SELECT D.docId,D.empId
+FROM Doctor AS D
+WHERE EXISTS ( SELECT * 
+			   FROM Diagnosis AS Di
+			   WHERE Di.docId=D.docId
+			  )
+
+
+
+
+--EXERCISE # 69
+--Modify the above code to display list of doctor/s that had never diagnosed a patient
+SELECT D.docId,D.empId
+FROM Doctor AS D
+WHERE NOT EXISTS ( SELECT * 
+			       FROM Diagnosis AS Di
+			       WHERE Di.docId=D.docId
+			      )
+
+
+
+
+--EXERCISE # 70
+--Write a code that display the list of medicines which are not prescribed to patients
+SELECT Med.mId, Med.brandName, Med.genericName
+FROM Medicine as Med
+WHERE NOT EXISTS ( SELECT *
+			       FROM MedicinePrescribed AS MedP
+			       WHERE Med.mId=MedP.mId			   
+			     )
+
+
+
+
+--EXERCISE # 71
+--Write a code that display the list of medicines which are prescribed to patients
+SELECT Med.mId, Med.brandName, Med.genericName
+FROM Medicine as Med
+WHERE EXISTS ( SELECT *
+			   FROM MedicinePrescribed AS MedP
+			   WHERE Med.mId=MedP.mId			   
+			  )
+
+
+
+
+
+/************ Working with Multiple Tables
+ 
+ Usually it is required to query for data stored in multiple locations,
+ Creates intermediate virtual tables that will be consumed by subsequent phases or the query
+
+	- FROM clause determines source of table/s to be used in SELECT statement
+	- FROM clause can contain tables and operators
+*** - Resulst set of FROM clause is virtual table
+		: Subsequent logical operations in SELECT statement consume this virtual table
+	- FROM clause can establish table aliases for use by subsequent pharses of query
+	
+	- JOIN : is a means for combining columns from one (self-join) or more tables by using values 
+	         common to each.
+	
+	- Types of JOINs
+		 CROSS JOIN : 
+			: Combines all rows in both tables (Creates Carticial product)
+		 INNER JOIN ( JOIN )
+			: Starts with Cartecian product, and applies filter to match rows 
+			  between tables based on predicate
+			: MOST COMMONLY USED TO SOLVE BUSINESS PROBLEMS.
+		 OUTER JOIN
+			: Starts with Cartician product, all rows from designated table preserved,
+			  matching rows from other table retrived, Additional NULL's inserted as
+			  place holders
+
+			: Types of OUTER JOIN
+				: LEFT OUTER JOIN ( LEFT JOIN )
+					- All rows of LEFT table is preserved, 
+				: RIGHT OUTER JOIN ( RIGHT JOIN )
+					- All rows of RIGHT table is preserved, 
+				: FULL OUTER JOIN ( FULL JOIN )
+
+*/
+
+
+--For demonstration purpose, run the following codes that creates two tables, T1 and T2
+--After inserting some data on each tables view the cross product, 'CROSS JOIN'  of the two tables
+
+CREATE TABLE T1 
+	( A CHAR(1),
+	  B CHAR(1),
+	  C CHAR(1)
+	 );
+GO
+
+CREATE TABLE T2 
+	( A CHAR(1), 
+	  Y CHAR(1), 
+	  Z CHAR(1)
+	 );
+GO
+
+INSERT INTO T1 
+	VALUES ('a','b','c'), 
+		   ('d','e','f'), 
+		   ('g','h','i');
+GO
+
+INSERT INTO T2 
+	VALUES ('a','m','n'),
+		   ('X','Y','Z'), 
+		   ('d','x','f');
+
+GO
+
+
+
+--First see the content of each table one by one
+SELECT *
+FROM T1
+
+SELECT *
+FROM T2
+
+
+
+--Now get the Cross Product (CROSS JOIN) of T1 and T2
+SELECT *
+FROM T1 CROSS JOIN T2
+
+
+
+--Execute the following to get LEFT OUTER JOIN b/n T1 and T2 with condition columns 'A'
+--on both tables have same value
+SELECT *
+FROM T1 LEFT OUTER JOIN T2 ON T1.A=T2.A
+
+
+
+--Execute the following to get RIGHT OUTER JOIN b/n T1 and T2 with condition columns 'A'
+--on both tables have same value, Notice the difference with LEFT OUTER JOIN
+SELECT *
+FROM T1 RIGHT OUTER JOIN T2 ON T1.A=T2.A
+
+
+--Execute the following to get FULL OUTER JOIN b/n T1 and T2 with condition columns 'A'
+--on both tables have same value, Again notice the difference with LEFT/RIGHT OUTER JOINs
+SELECT *
+FROM T1 FULL OUTER JOIN T2 ON T1.A=T2.A
+
+
+
+
+--EXERCISE # 72
+--Get the CROSS JOIN of Patient and Diagnosis tables
+SELECT *
+FROM Patient P CROSS JOIN Diagnosis D
+
+
+
+
+--EXERCISE # 73
+--Get the information of a patient along with its diagnosis. 
+--NOTE : First CROSS JOIN Patient and Diagnosis tables, and retrive only the ones that share the same 'mrn on both tables
+SELECT *
+FROM Patient P 
+	 CROSS JOIN Diagnosis D
+WHERE P.mrn = D.mrn
+
+
+
+--EXERCISE # 74
+-- Retrive MRN, Full Name, Diagnosed Date, Disease Id, Result and Doctor Id for Patient, MRN = 'PA002'
+SELECT P.mrn, CONCAT(P.pFName,' ',P.pLName) [Full Name], D.diagDate [Diagnosed Date], 
+       D.dId [Disease Id], D.diagResult [Result], D.docId [Doctor Id]
+FROM Patient P 
+	 CROSS JOIN Diagnosis D
+WHERE P.mrn = D.mrn AND P.mrn = 'PA002'
+
+--SIMILARLY
+SELECT PATIENT.mrn, PATIENT.pFName, PATIENT.pLName, DIAGNOSIS.diagDate,
+       Diagnosis.dId, Diagnosis.docId
+FROM PATIENT CROSS JOIN Diagnosis
+WHERE PATIENT.mrn='PA002'
+
+--OR
+SELECT P.mrn, P.pFName, P.pLName, D.diagDate,
+       D.dId, D.docId
+FROM PATIENT AS P CROSS JOIN Diagnosis AS D
+WHERE P.mrn='PA002'
+
+
+
+--EXAMPLE :
+--LEFT OUTER JOIN : Returns all rows form the first table, only matches from second table. 
+--It assignes 'NULL' on second table that has no matching with first table
+SELECT *
+FROM EMPLOYEE AS E LEFT OUTER JOIN DOCTOR AS D ON E.empId=D.empId
+
+
+
+--EXERCISE :
+--List employees that are not doctors by profession
+--NOTE : Use LEFT OUTER JOIN as required
+SELECT *
+FROM EMPLOYEE AS E LEFT OUTER JOIN DOCTOR AS D ON E.empId=D.empId
+WHERE D.empId IS NULL
+
+
+
+
+--EXAMPLE : 
+--RIGHT OUTER JOIN : Returns all rows form the second table, only matches from first table. 
+--It assignes 'NULL' on second table that has no matching with second table
+--The following query displays the list of doctors that are not employees to the hospital
+SELECT *
+FROM EMPLOYEE AS E RIGHT OUTER JOIN DOCTOR AS D ON E.empId=D.empId
+WHERE E.empFName IS NULL
+--Obviously all Doctors are employees, hence the result has no instance.
+
+
+
+
+--EXAMPLE : The following query displays the list of doctors that had never diagnosed 
+--a parient
+SELECT DO.docId, DO.empId, DO.lisenceNo, DO.rank, DO.specialization
+FROM Diagnosis AS DI RIGHT OUTER JOIN DOCTOR AS DO ON DI.docId=DO.docId
+WHERE DI.docId IS NULL
+
+
+
+--EXERCISE # 75
+--Display the list of medicines that are prescribed by any of the doctor. (Use RIGHT OUTER JOIN)
+SELECT DISTINCT MD.brandName, MD.genericName, MD.[use]
+FROM MedicinePrescribed AS MP RIGHT OUTER JOIN Medicine AS MD ON MP.mId=MD.mId
+WHERE MP.mId IS NOT NULL
+
+
+
+--EXERCISE # 76
+--Display the list of medicines that which not prescribed by any of the doctors. (Use RIGHT OUTER JOIN)
+SELECT DISTINCT MD.brandName, MD.genericName, MD.[use]
+FROM MedicinePrescribed AS MP RIGHT OUTER JOIN Medicine AS MD ON MP.mId=MD.mId
+WHERE MP.mId IS NULL
+
+
+
+
+--EXERCISE # 77 
+--Get Patients with their diagnosis information: MRN, Full Name, Insurance Id, Diagnosed Date, Disease Id and Doctor Id
+--You can get this information from Patient and Diagnosis tables
+SELECT P.mrn, CONCAT(p.pFName,' ',P.pLName) [Full Name], P.insuranceId, D.diagDate, D.dId [Disease Id], 
+	   D.docId [Doctor Id]
+FROM Patient P 
+	 INNER JOIN Diagnosis D ON P.mrn = D.mrn
+
+
+
+
+--EXERCISE # 78 
+--Get Doctors who have ever diagonosed a patient(s) with the diagnosis date, mrn 
+--and Disease Id and result of the patient who is diagnosed
+--The result should include Doctor Id, Specialization, Diagnosis Date, mrn of 
+--the patient, Disease Id, Result
+SELECT DR.docId [Doctor Id], DR.specialization, DG.diagDate, DG.mrn, 
+       DG.dId, dg.diagResult
+FROM Doctor AS DR JOIN Diagnosis AS DG ON DR.docId = DG.docId
+
+
+
+
+--EXERCISE # 79
+--Add the Full Name of the Doctors to the above query.
+--HINT : Join Employee table with the existing table formed by joining Doctor & Diagnosis tables on previous exercise
+SELECT DR.docId [Doctor Id], CONCAT(E.empFName,' ',E.empLName) [Full Name],DR.specialization, DG.diagDate, DG.mrn, DG.dId, dg.diagResult
+FROM Doctor DR 
+	JOIN Diagnosis DG ON DR.docId = DG.docId 
+	JOIN Employee E ON DR.empId = E.empId
+
+
+
+
+
+--EXERCISE # 80
+--Add the Full Name of the Patients to the above query.
+SELECT DR.docId [Doctor Id], CONCAT(E.empFName,' ',E.empLName) [Doctor Full Name],DR.specialization, 
+	   DG.diagDate, DG.mrn, CONCAT(P.pFName,' ',P.pLName) [Pateint Full Name],DG.dId, dg.diagResult
+FROM Doctor DR 
+	JOIN Diagnosis DG ON DR.docId = DG.docId 
+	JOIN Employee E ON DR.empId = E.empId 
+	JOIN Patient P ON DG.mrn = P.mrn
+
+
+
+
+--EXERCISE # 81
+--Add the Disease Name to the above query
+SELECT DR.docId [Doctor Id], CONCAT(E.empFName,' ',E.empLName) [Doctor Full Name],DR.specialization, 
+	   DG.diagnosisNo, DG.diagDate, DG.mrn, CONCAT(P.pFName,' ',P.pLName) [Pateint Full Name], 
+	   DG.dId [Disease Id], DS.dName [Disease Name],dg.diagResult
+FROM Doctor DR 
+	JOIN Diagnosis DG ON DR.docId = DG.docId 
+	JOIN Employee E ON DR.empId = E.empId 
+	JOIN Patient P ON DG.mrn = P.mrn 
+	JOIN Disease DS ON DG.dId = DS.dId
+
+
+
+
+--EXERCISE # 82
+--Join tables as required and retrive PresciptionId, DiagnosisId, PrescriptionDate, MedicineId and Dosage
+SELECT P.prescriptionId, diagnosisNo, PrescriptionDate, mid MedicineId, Dosage
+FROM Prescription P 
+	JOIN MedicinePrescribed MP ON P.prescriptionId = MP.prescriptionId
+
+
+
+
+
+--EXERCISE # 83
+--Retrive PresciptionId, DiagnosisId, PrescriptionDate, MedicineId, Dosage and Medicine Name
+SELECT P.prescriptionId, diagnosisNo, PrescriptionDate, MP.mid MedicineId, 
+       M.brandName, Dosage
+FROM Prescription P 
+	 JOIN MedicinePrescribed MP ON P.prescriptionId = MP.prescriptionId 
+	 JOIN Medicine M ON MP.mId = M.mId
+
+
+
+
+--EXERCISE # 84
+-- Get the MRN, Full Name and Number of times each Patient is Diagnosed
+SELECT P.mrn, CONCAT(P.pFName,' ',P.pLName) [Patient Full Name], 
+       COUNT(D.diagnosisNo) [Number of Times Diagnosed]
+FROM Patient P 
+	JOIN Diagnosis D ON P.mrn = D.mrn
+GROUP BY P.mrn, P.pFName, P.pLName
+
+
+
+
+
+--EXERCISE # 85
+--Get Full Name and number of times every Doctor Diagnosed Patients
+SELECT CONCAT(E.empFName,' ',E.empLName) [Doctor's Full Name], 
+       COUNT(DG.diagnosisNo) [Diagnosis Count Per Doctor]
+FROM Employee E 
+	 JOIN Doctor D ON E.empId = D.empId 
+	 JOIN Diagnosis DG ON D.docId = DG.docId
+GROUP BY E.empFName, E.empLName
+
+
+
+
+
+--EXERCISE # 86
+--Patient diagnosis and prescribed Medicine Information 
+--MRN, Patient Full Name, Medicine Name, Prescibed Date and Doctor's Full Name
+
+SELECT PA.mrn, CONCAT(pFName,' ',pLName) AS [PATIENT NAME], ME.brandName AS [BRAND NAME],
+	   PR.prescriptionDate AS [PRESCRIPTION DATE],
+	   CONCAT(EM.empFName,' ', EM.empLName) AS [EMPLOYEE NAME]
+FROM Patient AS PA 
+	 JOIN Diagnosis AS DI ON PA.mrn=DI.mrn 
+	 JOIN Medicine AS ME ON ME.mId=DI.dId
+	 JOIN Prescription AS PR ON PR.diagnosisNo=DI.diagnosisNo
+	 JOIN Doctor AS DO ON DO.docId=DI.docId
+	 JOIN Employee AS EM ON EM.empId=DO.empId
+
+/*
+OR 
+
+SELECT	DG.mrn [MRN], CONCAT(P.pFName,' ',P.pLName) [Pateint Full Name], M.brandName [Medicine Name], PR.prescriptionDate,
+		CONCAT(E.empFName,' ',E.empLName) [Doctor Full Name]
+FROM Doctor DR JOIN Diagnosis DG ON DR.docId = DG.docId JOIN Employee E ON DR.empId = E.empId JOIN 
+		Patient P ON DG.mrn = P.mrn JOIN Prescription PR ON DG.diagnosisNo = PR.diagnosisNo JOIN 
+		MedicinePrescribed MP ON PR.prescriptionId = MP.prescriptionId JOIN Medicine M ON MP.mId = M.mId
+
+*/
+
+
+
+
+/********** Some Join Exercises ***************
+
+	Write Queries for the following
+
+	1- Get Patients' information: MRN, Patient Full Name, and Diagnosed Date of those diagnosed for disease with dId = 3
+		(Use filter in Where clause in addition to Joining tables Patient and Diagnosis)
+
+			SELECT P.mrn, CONCAT(P.pFName,' ',P.pLName) AS [PATIENT NAME],D.diagDate
+			FROM PATIENT AS P JOIN DIAGNOSIS AS D ON P.MRN = D.MRN
+			WHERE D.DID=3
+
+
+	2- Get the Employee Id, Full Name and Specializations for All Doctors
+		
+			SELECT CONCAT(E.empFName,' ',E.empLName) AS [EMPLOYEE NAME], E.empId, D.Specialization
+			FROM Employee AS E JOIN Doctor AS D on e.empId=D.empId
+
+	3- Get Disease Ids (dId) and the number of times Patients are diagnosed for those diseases
+	   (Use only Diagnosis table for this)
+			- Can you put in the order of (highest to lowest) based on the number of times people diagnosed for the disease?
+			- Can you get the top most prevalent disease?
+
+
+			SELECT did, count(did)
+			FROM Diagnosis
+			GROUP BY did
+			ORDER BY count(did)
+
+
+			SELECT TOP (2) did, count(did)
+			FROM Diagnosis
+			GROUP BY did
+			ORDER BY count(did) DESC
+
+
+	4- Get Medicines (mId) and the number of times they are prescribed. 
+		(Use only the MedicinePrescribed table)
+		- Also get the mId of medicine that is Prescribed the most
+
+			SELECT mId, count(mId)
+			FROM MedicinePrescribed
+			GROUP BY mId
+			ORDER BY count(mId)
+
+			--Medicine that is prescribed the most
+			SELECT TOP (2) mId, count(mId)
+			FROM MedicinePrescribed
+			GROUP BY mId
+			ORDER BY count(mId) desc
+
+
+	5- Can you add the name of the medicines the above query (question 4)? 
+		(Join MedicinePrescribed and Medicine tables for this)
+
+			SELECT MP.mId, count(MP.mId), m.BrandName, M.genericName
+			FROM MedicinePrescribed AS MP JOIN Medicine as M ON MP.mId=M.mId
+			GROUP BY MP.mId,m.BrandName, M.genericName
+			ORDER BY count(MP.mId)
+
+
+	6- Alter the table PharmacyPersonel and Add a column ppId - which is a primary key. You may use INT as a data type
+	
+			ALTER TABLE PharmacyPersonel ADD ppId INT PRIMARY KEY (ppId) NOT NULL	
+	
+	
+	
+	7- Create one table called MedicineDispense with the following properties
+		MedicineDispense(
+							dispenseNo - pk, 
+							presciptionId and mId - together fk
+							dispensedDate - defaults to today
+							ppId - foreign key referencing the ppId of PharmacyPersonnel table
+						)
+
+
+			CREATE TABLE MedicineDispense
+			(
+			 dispenseNo INT NOT NULL,
+			 prescriptionId INT NOT NULL,
+			 mId SMALLINT NOT NULL,
+			 dispensedDate DATE DEFAULT GETDATE(),
+			 ppId INT NOT NULL,
+			 CONSTRAINT PK_MedicineDispense_dispenseNo PRIMARY KEY (dispenseNo),
+			 CONSTRAINT FK_MedicineDispense_presciptionId_mId FOREIGN KEY ([prescriptionId],mId) REFERENCES MedicinePrescribed([prescriptionId],mId),
+--			 CONSTRAINT DEF_MedicineDispense_dispensedDate DEFAULT GETDATE() for dispensedDate,
+			 CONSTRAINT FK_MedicineDispense_ppId FOREIGN KEY (ppId) REFERENCES PharmacyPersonel(ppId)		
+			)
+
+
+
+	8- Add four Pharmacy Personnels (add four rows of data to the PharmacyPersonnel table) - Remember PharmacyPersonnel are Employees
+		and every row you insert into the PharmacyPersonnel table should each reference one Employee from Employee table
+
+		   INSERT INTO PharmacyPersonel (empId, pharmacistLisenceNo,licenceDate, PCATTestResult, level, ppId)
+				VALUES ('EMP02','GP-003','2012-02-06', 86, 'Out Patient', 1),
+					   ('EMP06','HP-012','2015-11-12',  72, 'In Patient',2),
+					   ('EMP08','CP-073','2014-04-13',  93, 'Store Manager',3),
+					   ('EMP10','GP-082', '2017-06-19', 67, 'Duty Manager',4)
+
+
+	9- Add six MedicineDispense data
+
+		 INSERT INTO MedicineDispense (dispenseNo, prescriptionId, mId, dispensedDate, ppId)
+				VALUES (1,10,3,'2018-03-11',4),
+					   (2,11,1,'2017-09-21',3),
+					   (3,12,5,'2016-08-26',2),
+					   (4,13,4,'2015-04-04',1),
+					   (5,17,3,'2014-03-23',2),
+					   (6,18,4,'2017-09-28',4)
+
+*/
+
+
+
+
+/*
+	SET OPERATIONS :
+		-UNION
+		-UNION ALL
+		-INTERSECT
+		-EXCEPT
+*/
+
+
+-- Set Operations on Result Sets
+-- To Exemplify this in more detail, let's create below two tables
+
+CREATE TABLE HotelCust
+(
+	fName VARCHAR(20),
+	lName VARCHAR(20),
+	SSN CHAR(11),
+	DoB DATE
+);
+GO
+
+CREATE TABLE RentalCust
+(
+	firstName VARCHAR(20),
+	lastName VARCHAR(20),
+	social CHAR(11),
+	DoB DATE,
+	phoneNo CHAR(12)
+);
+GO
+
+
+INSERT INTO HotelCust 
+	VALUES	('Dennis', 'Gogo', '123-45-6789', '2000-01-01'), 
+	        ('Belew', 'Haile', '210-45-6789', '1980-09-10'),
+			('Nathan', 'Kasu', '302-45-6700', '1989-02-01'), 
+			('Kumar', 'Sachet', '318-45-3489', '1987-09-20'),
+			('Mahder', 'Nega', '123-02-0089', '2002-01-05'), 
+			('Fiker', 'Johnson', '255-22-6033', '1978-05-10'),
+			('Alemu', 'Tesema', '240-29-6035', '1982-05-16')
+
+
+INSERT INTO RentalCust 
+	VALUES	('Ujulu', 'Obang', '000-48-6789', '2001-01-01','908-234-0987'), 
+			('Belew', 'Haile', '210-45-6789', '1980-09-10', '571-098-2312'),
+			('Janet', 'Caleb', '903-00-4700', '1977-02-01', '204-123-0987'), 
+			('Kumar', 'Sachet', '318-45-3489', '1987-09-20', '555-666-7788'),
+			('Mahder', 'Nega', '123-02-0089', '2002-01-05', '301-678-9087'),
+			('John', 'Miller', '792-02-0789', '2005-10-25', '436-678-4567')
+
+
+
+
+--To use UNION, the two tables must be UNION compatable
+--EXAMPLE : Execute the following and explain the result, 
+SELECT * FROM HotelCust
+UNION
+SELECT * FROM RentalCust
+
+
+
+--EXERCISE # 85 
+--Correct the above code and use 'UNION' operator to get the list of all customers in HotelCustomrs and RentalCustomer 
+SELECT * FROM HotelCust
+UNION
+SELECT firstName, lastName, social, DoB FROM RentalCust
+
+
+
+
+--EXERCISE # 86 
+--Use UNION ALL operator instead of UNION and explain the differece on the result/output
+SELECT * FROM HotelCust
+UNION ALL
+SELECT firstName, lastName, social, DoB FROM RentalCust
+
+
+
+
+--EXERCISE # 87 
+--Get list of customers in both Hotel and Rental Customers ( INTERSECT )
+SELECT * FROM HotelCust
+INTERSECT
+SELECT firstName, lastName, social, DoB FROM RentalCust
+
+
+
+
+--EXERCISE # 88 
+--Get list of customers who are Hotel Customers but not Rental ( EXCEPT )
+SELECT * FROM HotelCust
+EXCEPT
+SELECT firstName, lastName, social, DoB FROM RentalCust
+
+
+
+
+--EXERCISE # 89
+--Get list of customers who are Rental Customers but not Hotel  (EXCEPT )
+SELECT firstName, lastName, social, DoB FROM RentalCust
+EXCEPT
+SELECT * FROM HotelCust
+
+
+
+
+
+
+/*********************   STORED PROCEDURES  **************************************
+	
+- STORED PROCEDURES (Procedure or Proc for short) are named database 
+	- Are collections of TSQL statement stored in a database
+	- Can return results, manipulate data, and perform adminstrative actions on server
+	- Stored procedures can include
+		- Insert / Update / Delete
+	- objects that encapsualte T-SQL Code (DDL, DML, DQL, DCL)
+	- Can be called with EXECUTE (EXEC) to run the encapsulated code
+	- Can accept parameters
+	- Used as interface layer between a database and application.
+
+	- Used for retrival / insertion / updating and deleting with complex validation
+		: 	Views and Table Valued Functions are used for simple retrival
+		
+	SYNTAX : 
+		CREATE PROC <proc name> 
+		[optional Parameter list] 
+		AS 
+			<t-sql code>
+		
+		GO;
+
+*/
+
+
+
+
+--NOTE : use 'usp' as prefix for new procedures, to mean ' User created Stored Procedure'
+
+
+
+--EXAMPLE # 01 
+--Write a code that displays the list of patients and the dates they were diagnosed
+SELECT P.*, D.diagDate
+FROM Patient P JOIN Diagnosis D ON P.mrn = D.mrn
+GO
+
+
+
+
+
+--EXAMPLE # 02
+--Customize the above code to creates a stored proc to gets the same result
+CREATE PROC GetPatientsAndDiagnosis
+AS
+	SELECT P.*, D.diagDate
+	FROM Patient P JOIN Diagnosis D ON P.mrn = D.mrn
+GO
+
+
+
+--EXAMPLE # 03
+--Execute the newly created stored procedure, using EXEC
+EXEC GetPatientsAndDiagnosis
+GO
+
+
+
+--EXAMPLE # 04
+--Modify the above procedure disply patients that was diagnosed in the year 2018
+
+ALTER PROC GetPatientsAndDiagnosis
+AS
+	SELECT P.*, D.diagDate
+	FROM Patient P JOIN Diagnosis D ON P.mrn = D.mrn
+	WHERE YEAR(D.diagDate)=2018
+GO
+
+
+EXEC GetPatientsAndDiagnosis
+GO
+
+
+--EXAMPLE # 05
+--Drop the procedure created in the above example
+DROP PROCEDURE GetPatientsAndDiagnosis
+
+
+
+
+
+--EXAMPLE # 06 [ Procedure with parameter/s ]
+--Create a proc that returns Doctors who diagnosed Patients in a given year
+
+CREATE PROC usp_DoctorDiagnosisInYear @GivenYear INT
+AS
+	SELECT DISTINCT D.docId, CONCAT(E.empFName,' ',E.empLName) [Full Name], 
+	                D.specialization, E.email, DG.diagDate
+	FROM Employee E JOIN Doctor D ON E.empId = D.empId 
+	                JOIN Diagnosis DG ON D.docId = DG.docId
+	WHERE YEAR(DG.diagDate) = @GivenYear
+GO
+
+
+EXEC usp_DoctorDiagnosisInYear 2016
+DROP PROCEDURE usp_DoctorDiagnosisInYear
+
+
+
+
+--EXAMPLE # 07 [ Procedure with DEFAULT values for parameter/s]
+--Create a proc that returns Doctors who diagnosed Patients in a given year. The same procedure 
+--will display a message 'Diagnosis Year Missing' if the year is not given as an input. 
+--NOTE : If no specific year is entered, NULL is a default value for the parameter
+
+ALTER PROC usp_DoctorDiagnosisDate @dignosisDate DATE = NULL
+AS
+	IF @dignosisDate IS NULL
+		BEGIN
+			PRINT 'Diagnosis Year Missing'
+		END
+	ELSE
+		BEGIN
+			SELECT DISTINCT D.docId, CONCAT(E.empFName,' ',E.empLName) [Full Name], 
+			                D.specialization, E.email, DG.diagDate
+			FROM Employee E JOIN Doctor D ON E.empId = D.empId 
+			                JOIN Diagnosis DG ON D.docId = DG.docId
+			WHERE DG.diagDate = @dignosisDate
+		END
+GO
+
+EXECUTE usp_DoctorDiagnosisDate
+EXECUTE usp_DoctorDiagnosisDate '2018-02-01'
+DROP PROCEDURE usp_DoctorDiagnosisDate
+
+
+
+
+--EXERCISE # 01 
+--Create a stored procedure that returns the the average salaries for each type of employees.
+--NOTE : use 'usp' as prefix for new procedures, to mean ' user created stored procedure'
+
+CREATE PROCEDURE usp_AverageSalaryEmployeeType
+AS
+	SELECT AVG(salary)[Average], Employee.empType
+	FROM Employee
+	GROUP BY EMPLOYEE.empType
+GO
+
+EXECUTE usp_AverageSalaryEmployeeType
+
+DROP PROCEDURE usp_AverageSalaryEmployeeType
+
+--It is also possible to use 'PROC' instead of 'PROCEDURE', 
+CREATE PROC usp_AverageSalaryEmployeeType
+AS
+	SELECT AVG(salary)[Average], Employee.empType
+	FROM Employee
+	GROUP BY EMPLOYEE.empType
+GO
+
+
+--It is also possible to use 'EXEC' instead of 'EXECUTE', 
+
+EXEC usp_AverageSalaryEmployeeType
+EXECUTE usp_AverageSalaryEmployeeType
+DROP PROCEDURE usp_AverageSalaryEmployeeType
+
+
+
+
+--EXERCISE # 02
+--Create a stored procedure to get list of employees earning less than the average salary of 
+--all employees
+--NOTE : use 'usp' as prefix for new procedures, to mean ' user created stored procedure'
+
+CREATE PROC usp_EmployeeListLessThanAverage
+AS
+	SELECT *
+	FROM Employee
+	WHERE Employee.salary<(
+							SELECT CONVERT(DECIMAL(8,2),AVG(EMPLOYEE.SALARY))
+							FROM Employee
+							)
+GO
+
+
+EXEC usp_EmployeeListLessThanAverage
+DROP PROC usp_EmployeeListLessThanAverage
+
+
+
+--EXERCISE # 03
+--Create a procedure that returns list of Contractors that earn less than average salary of Principals
+
+CREATE PROCEDURE proc_ContractorsEarnLessThanPermanant
+AS
+	SELECT *
+	FROM Employee
+	WHERE empType='C' AND salary< (
+									SELECT AVG(SALARY)
+									FROM Employee
+									WHERE empType='P'
+									)
+
+GO
+
+EXECUTE proc_ContractorsEarnLessThanPermanant
+
+DROP PROCEDURE proc_ContractorsEarnLessThanPermanant
+
+
+
+--EXERCISE # 04 (*)
+--Create a proc that returns Doctors who diagnosed Patients in a year 2017
+--NOTE : (1) The result must include DocId, Full Name, Specialization, Email Address and DiagnosisDate
+
+ALTER PROC usp_DoctorsThatDiagnosisIn2017
+AS
+   SELECT DI.docId, CONCAT (EM.empFName,' ', EM.empLName), DO.specialization, EM.email
+   FROM Diagnosis AS DI JOIN Doctor AS DO ON DI.docId=DO.docId
+						JOIN EMPLOYEE AS EM ON EM.empId=DO.empId
+   WHERE YEAR(DI.diagDate)=2017
+GO
+
+EXEC usp_DoctorsThatDiagnosisIn2017
+
+DROP PROCEDURE usp_DoctorsThatDiagnosisIn2017
+
+
+
+
+--EXERCISE # 05 (*)
+--Create a stored proc that returns list of patients diagnosed by a given doctor. 
+
+
+
+
+
+
+--EXERCISE # 06 (*)
+--Create a stored procedure that returns the average salary of Employees with a given empType
+
+
+
+
+
+
+--EXERCISE # 07 (*)
+--Create a stored Proc that returns the number of diagnosis each doctor made in a 
+--given month of the year -> pass both month and year as integer values
+
+
+CREATE PROC usp_NumberOfDiagnosisYearMonth 
+@YEAR INT, @MONTH INT
+AS
+	SELECT COUNT(*)
+	FROM Diagnosis
+	WHERE YEAR(Diagnosis.diagDate)=@YEAR AND MONTH(DIAGNOSIS.DIAGDATE)=@MONTH
+GO
+
+
+
+--Putting the parameters in correct order when the procedure is defined
+--Sequence of the parmeters matter
+EXECUTE usp_NumberOfDiagnosisYearMonth 3, 12
+
+
+
+--Assigning the parameters when the procedure is called, 
+--Sequene of the parameters does't matter
+EXECUTE usp_NumberOfDiagnosisYearMonth @MONTH=3, @YEAR=2015
+
+
+DROP PROC usp_NumberOfDiagnosisYearMonth
+
+
+
+
+/*
+
+USING STORED PROCEDURES FOR DML
+ 
+Stored procs are mainly used to perform DML on tables or views
+Stored Procs to insert data into a table
+
+*/
+
+
+
+
+--EXAMPLE # 08
+--Create a proc that is used to insert data into the Disease table
+
+
+CREATE PROCEDURE usp_InsertNewDisease @dId INT, @dName VARCHAR(100), @dCategoryId CHAR(2),
+                                      @dCategory VARCHAR(50), @dType VARCHAR(40)
+AS
+	BEGIN
+		INSERT INTO Disease VALUES (@did, @dName, @dCategoryId, @dCategory, @dType)
+	END
+
+GO
+
+
+--to insert new record
+EXECUTE usp_InsertNewDisease 100, 'Nasal Congestion','D2', 'Infectious', 'Contageous'
+
+--to remove newly inserted record
+DELETE FROM Disease WHERE DID=100
+
+--to delete the procedure
+DROP PROCEDURE usp_InsertNewDisease
+
+
+
+
+--EXERCISE # 09
+--Create a procedure to insert data into Doctors table,
+
+
+
+
+--Confirm for the insertion of new record using SELECT statement
+SELECT * FROM Doctor;
+GO
+
+
+
+
+
+--EXERCISE # 10
+--Create a stored Proc to deletes a record from RentalCust table with a given SSN 
+
+CREATE PROCEDURE usp_DeleteRentalCust @social CHAR(11)
+AS
+	BEGIN
+		DELETE FROM RentalCust WHERE RentalCust.social=@social
+	END
+GO
+
+EXECUTE usp_DeleteRentalCust '903-00-4700'
+
+SELECT * FROM RentalCust
+
+
+
+
+
+--EXERCISE # 11
+--Create the stored procedure that delete a record of a customer in HotelCust table for a given SSN
+--The procedure must display 'invalid SSN' if the given ssn is not found in the table
+CREATE PROCEDURE usp_DeleteHotelCust_SSN @SSN CHAR(11) = NULL
+AS
+	IF @SSN IN (SELECT SSN FROM HotelCust)
+	 BEGIN
+		 DELETE FROM HotelCust WHERE @SSN=SSN
+	 END
+	ELSE 
+		BEGIN
+			PRINT 'SSN not found in HotelCust Table'
+		END
+GO
+
+
+
+
+--EXERCISE # 12
+--Write a stored procedure to delete a record from RentalCust for a given SSN. If the SSN is not found
+--the procedure deletes the entire rows in the table.
+--NOTE : First take backup for Employee table before performing this task. 
+
+
+
+
+--EXERCISE # 13
+--Write a code that displays the list of customers with the middle two numbers of their SS is 45
+SELECT *
+FROM RentalCust
+WHERE SUBSTRING(social,5,2)='45'
+
+
+
+
+--EXERCISE # 14
+--Create a Proc that Deletes record/s from RentalCustomer table, by accepting ssn as a parameter. 
+--The deletion can only happen if the middle two numbers of SSN is 45
+CREATE PROC usp_DelRentalCustWith45 @ssn CHAR(11)
+AS
+		DECLARE @middleChars CHAR(2);
+		SET @middleChars = SUBSTRING(@ssn, 5,2)
+		IF @middleChars = '45'
+			BEGIN
+				DELETE FROM RentalCust
+				WHERE social = @ssn
+			END
+		ELSE
+			BEGIN
+				PRINT 'Can''t Delete the Customer, the middle numbers of the 
+				       social is not 45 or the customer doesn''t exist'
+			END
+GO
+-- Now test the sp
+
+EXEC usp_DelRentalCustWith45 '210-45-6789'
+
+SELECT * FROM RentalCust
+GO
+
+
+--EXERCISE # 15
+--Create a procedure that takes two numeric characters, and delete row/s from RentalCust table 
+--if the middle two characters of the customer/s socal# are same as the passed characters 
+
+
+
+
+
+--EXERCISE # 16
+--STORED PROCEDURES to update a table
+--Create an stored procedure that updates the phone Number of a rental customer, for a given customer
+--Note : The procesure must take two parameters social and new phone number
+
+
+
+
+
+--EXERCISE # 17
+--Create a stored procedure that takes backup for RentalCust table into RentalCust_Archive table
+--Note : RentalCustArchive table must be first created.
+
+
+
+
+
+
+--EXERCISE # 18
+--Create a stored procedure that takes backup for HotelCust table into HotelCustArchive table
+--Note : Use 'EXECUTE' command to automatically create and populate HotelCustArchive table.
+
+
+
+
+
+EXEC usp_ArchiveAndPurgeRentalCust
+
+SELECT * FROM RentalCust
+
+SELECT * FROM  RentalCustArchive_2019_6_14
+
+
+
+--Exercise - 17
+--Recreate the above stored proc such that, it shouldn't delete (purge the data) before making
+--sure the data is copied. Hint: use conditions (IF...ELSE) and TRY ... CATCH clauses
+
+
+
+
+
+-- A simpler version of the above Stored Proc - with no dynamic date value appending to table name
+CREATE PROC usp_ArchiveAndPurgeRentalCustSimple
+AS
+BEGIN
+	SELECT * 
+	INTO RentalCustArchive 
+	FROM RentalCust;
+
+	DELETE RentalCust;
+END
+GO
+
+
+
+
+
+
+
+/*
+--************************************  VIEWS  *****************************************************
+
+	VIEWS
+		- Quite simply VIEW is saved query, or a copy of stored query, stored on the server
+		- Is Virtual Table - that encapsulate SELECT queriey/es
+****	- It doesn't store data persistantly, but creates a Virtual table.
+		- Can be used as a source for queries in much the same way as tables themselves
+				: Can also be used to Join with tables
+		- Replaces commonly run query/ies
+		- Can't accept input parameters (Unlike Table Valued Functions (TVFs))
+
+		- Components
+			: A name
+			: Underlaying query
+
+		- Advantages
+			- Hides the complexity of queries, (large size of codding)
+			- Used as a mechanism to implement ROW and COLUMN level security
+			- Can be used to present aggregated data and hide detail data
+
+		- SYNTAX 
+			: To create a view: 
+
+					CREATE VIEW <view name> 
+					AS 
+						<Select statement>
+					GO
+
+
+			: To modify
+
+					ALTER VIEW <view name>
+					AS 
+						<Select statement>
+					GO
+				 
+
+			: To drop
+					DROP VIEW statement
+					AS 
+						<Select statement>
+					GO
+					
+	At view creation, 'GO' acts as delimiter to form a batch.  
+
+	To display the code, use 'sp_helptext' for a stored procedure
+		Syntax : 'sp_helptext < view_name >
+
+*/
+
+
+--EXAMPLE - View # 01 
+--Write a code that displays patient's MRN, Full Name, Address, Disease Id and Disease Name
+
+SELECT p.mrn, CONCAT(p.pFName,' ',p.pLName) [Full Name], p.stAddress, p.city, 
+	    p.[state], p.zipCode, ds.dId, ds.dName
+FROM Patient p JOIN Diagnosis d ON p.mrn = d.mrn 
+	            JOIN Disease ds ON d.dId = ds.dId
+
+
+
+
+--EXAMPLE - View # 02
+--Create simple view named vw_PatientDiagnosed using the above code.  
+
+CREATE VIEW vw_PatientDiagnosed
+AS
+	SELECT p.mrn, CONCAT(p.pFName,' ',p.pLName) [Full Name], p.stAddress, p.city, 
+	       p.[state], p.zipCode, ds.dId, ds.dName
+	FROM Patient p JOIN Diagnosis d ON p.mrn = d.mrn 
+	               JOIN Disease ds ON d.dId = ds.dId
+GO
+
+
+
+
+--EXAMPLE - View # 03
+--Check the result of vw_PatientDiagnosed by SELECT statement
+SELECT *
+FROM vw_PatientDiagnosed 
+
+
+
+
+
+--EXAMPLE - View # 04
+--Use vw_PatientDiagnosed and retrieve only the patients that came from MD
+--Note : It is possible to filter Views based on a criteria, similar with tables
+
+SELECT *
+FROM vw_PatientDiagnosed 
+WHERE [STATE]='MD'
+GO
+ 
+
+
+
+--EXAMPLE - View # 05
+--Modify vw_PatientDiagnosed so that it returns the patients diagnosed in year 2017 
+
+ALTER VIEW vw_PatientDiagnosed
+AS
+	SELECT p.mrn, CONCAT(p.pFName,' ',p.pLName) [Full Name], p.stAddress, p.city, 
+	       p.[state], p.zipCode, ds.dId, ds.dName
+	FROM Patient p JOIN Diagnosis d ON p.mrn = d.mrn 
+	               JOIN Disease ds ON d.dId = ds.dId
+	WHERE YEAR(d.diagDate) = 2017
+GO
+
+
+
+--EXAMPLE - View # 06
+--Check the result of modified vw_PatientDiagnosed by SELECT statement
+SELECT *
+FROM vw_PatientDiagnosed 
+
+
+
+
+
+--EXAMPLE - View # 07 
+--Use sp_helptext to view the code for vw_PatientDiagnosed
+sp_helptext vw_PatientDiagnosed
+
+
+
+
+--EXAMPLE - View # 08
+--Drop vw_PatientDiagnosed
+DROP VIEW vw_PatientDiagnosed
+
+
+
+
+--EXERCISE - View # 01
+--Create a view that returns Employees that live in state of Maryland, (Employee empId, FullName, DOB)
+
+CREATE VIEW vw_EmployeeMaryland
+AS
+	SELECT Employee.empId, CONCAT(Employee.empFName, ' ',Employee.empLName)[FULL NAME], Employee.DoB
+	FROM Employee
+	WHERE Employee.state='MD'
+
+GO
+
+
+SELECT *
+FROM vw_EmployeeMaryland
+
+
+
+
+--EXERCISE - View # 02
+--Create view that displays mId, Medicine ID and the number of times each medicine was 
+--prescribed.
+
+CREATE VIEW vw_MedicinePrescribed
+AS
+	SELECT MID, COUNT(*)[Count]
+	FROM MedicinePrescribed
+	GROUP BY MID
+GO
+
+
+
+
+--EXERCISE - View # 03
+--Join vw_MedicinePrescribed with Medicine table and get mId, brandName, genericName and 
+--number of times each medicine was prescribed  
+
+SELECT vw_MedicinePrescribed.mId, Medicine.brandName, Medicine.genericName,
+	   vw_MedicinePrescribed.Count
+FROM vw_MedicinePrescribed JOIN Medicine ON vw_MedicinePrescribed.mId=Medicine.mId
+
+
+
+
+
+--EXERCISE - View # 04
+--Create a view that displays all details of a patient along with his/her diagnosis details
+
+
+
+
+
+--EXERCISE - View # 05
+--Use the view created for 'EXERCISE - View # 04' to get the full detail of the doctors
+
+
+
+
+--EXERCISE - View # 06 (*)
+--Create the view that returns Contract employees only, empType='C'
+
+
+
+
+--EXERCISE - View # 07 (*)
+--Create the view that returns list of female employees that earn more 
+--than the average salary of male employees
+
+
+
+
+--EXERCISE - View # 08 (*)
+--Create the view that returns list of employees that are not doctors
+
+
+
+
+--EXERCISE - View # 09 (*)
+--Create the view that returns list of employees that are not pharmacy personel
+
+
+
+
+--EXERCISE - View # 10 (*)
+--Create the view that returns empid, full name, dob and ssn of doctors and pharmacy personels
+
+CREATE VIEW vw_DoctorsAndPharmacyPersonel
+AS
+	SELECT PP.empId, CONCAT (EM.empFName, ' ',EM.empLName)[Full Name], EM.DoB, EM.SSN 
+	FROM PharmacyPersonel PP JOIN Employee EM ON PP.empId=EM.empId
+	UNION
+	SELECT D.empId, CONCAT (E.empFName, ' ',E.empLName)[Full Name], E.DoB, E.SSN 
+	FROM Doctor D JOIN Employee E ON D.empId=E.empId
+GO
+
+SELECT *
+FROM vw_DoctorsAndPharmacyPersonel
+
+
+
+--EXERCISE - View # 11 (*)
+--Create the view that returns list of medicines that are not never prescribed. 
+
+
+
+
+--EXERCISE - View # 12 (*)
+--Create the view that returns list of patients that are not diagnosed for a disease 'Cholera'
+
+
+
+
+--EXERCISE - View # 13 (*)
+--Create the view that returns list of employees that earn less than employees averge salary
+
+
+
+
+--EXERCISE - View # 14 (*)
+--Create simple view on Disease table vw_Disease that dispaly entire data
+
+
+
+
+--EXERCISE - View # 15 (*)
+--Create view that returns list of doctors that had never done any diagnossis. 
+
+
+
+
+
+--EXERCISE - View # 16 (*)
+--Use view, vw_Disease, to insert one instance/record in Disease table
+
+SELECT * FROM vw_Disease
+INSERT INTO vw_Disease VALUES (17,'View Insert','D2','View Insert','Danger')
+
+
+
+
+--EXERCISE - View # 17 (*)
+--Use view, vw_Disease, to delete a record intered on previous exercise.
+
+DELETE FROM vw_Disease WHERE vw_Disease.dId=17
+
+
+
+
+--EXERCISE - View # 18 (*)
+--Create simple view on Medicine table vw_Medicine that dispaly entire data
+
+
+
+
+--EXERCISE - View # 19 (*)
+--Insert data into the Medicine table using vw_Medicine
+
+INSERT INTO vw_Medicine VALUES (13, 'Asprine', 'No name', 2000, 'Pain killer','2024-02-09', 0.35)
+
+
+/*
+NOTE : Data insertion by views on more than one tables (joined) is not supported
+     : Data insertion on joined tables is supported by triggers
+*/
+
+
+
+--EXERCISE - View # 20 (*)
+--Create a view, vw_PatientAndDiagnosis, by joining patient and diagnosis tables and 
+--try to insert data into vw_PatientDiagnosis view and explain your observation
+
+CREATE VIEW vw_PatientAndDiagnosis
+AS 
+	SELECT P.city,P.gender,P.insuranceId,P.PDoB,P.pFName,P.pLName,P.registeredDate,
+		   P.SSN,P.stAddress,P.state, P.zipCode,D.diagDate, D.diagnosisNo, D.diagResult,
+		   D.dId,D.docId,D.mrn
+	FROM Patient P JOIN Diagnosis D ON D.mrn=P.mrn
+GO
+
+
+SELECT * FROM vw_PatientAndDiagnosis
+
+
+INSERT INTO vw_PatientAndDiagnosis 
+	VALUES 
+			('AA007', 'Herrera', 'James', '2003-08-30', 'nse234', 'M', '920-32-1032', '7900 Westpark Dr', 
+			 'Mclean', 'VA', '21202', GETDATE(), 13, 'pp22', 1, GETDATE(), 'Positive')
+
+
+
+
+
+/************************   USER DEFINED FUNCTIONS, UDFs  **********************************************
+
+User Defined Functions, UDFs
+
+		- Can return a scalar value (single value), inline table-valued OR multi table-valued
+
+		
+		User Defined Functions, UDFs 
+			: Is compiled and executed everytime/whenever it is called.
+			: The function must return a value 
+***			: Function allows only SELECT statement in it.
+*** 		: Function can be embedded in a SELECT statement.
+*** 		: Functins can be used in the SQL statements anywhere in the WHERE/HAVING/SELECT sections 
+
+
+	 - Difference with stored procedures,
+		
+		Stored Procedure, SPs
+			: Are pre-compiled objects saved, in database, which gets executed whenever it is called.
+			: Returing a value is optional, can return zero or n values.
+*** 		: Allows SELECT as well as DML(INSERT/UPDATE/DELETE) statement
+*** 		: Cannot be utilized in a SELECT statement 
+*** 		: Cannot be used in the SQL statements anywhere in the WHERE/HAVING/SELECT sections	
+
+
+	 - Types of User Defined Functions :
+			- Scalar Functions
+			- Inline Table-Valued Functins, TVFs
+			- Multi-Statement Table-Valued Functions
+	
+	 - Scalar Fuctions
+		- May or may not have parameter, but always return SINGLE (Scalar) value
+		- Return value can be of any data type, except text, ntext, image, cusror and timestamp.
+		- Example :
+			- System functions are scalar functions
+
+	- SYNTAX:
+		
+		To create (Scalar Function)
+			CREATE FUNCTION function_name (@Para1 DataType, @Para2 DataType........)
+			RETURNS Return_Data_Type      --scalar
+			AS
+				BEGIN
+					<statements>   --Function Body
+					RETURN <value>
+				END
+
+		To create (Table Valued Function)			
+			CREATE FUNCTION function_name (@Para1 DataType, @Para2 DataType........)
+			RETURNS TABLE                -- table valued
+			AS
+			 RETURN
+			  (
+				 <statements> 
+	           )
+
+		
+		TO modify/alter
+			ALTER FUNCTION function_name
+
+		
+		TO drop/delete
+			DROP FUNCTION function_name
+
+
+*/
+
+
+
+USE HRMDB
+GO
+
+
+
+--EXAMPLE : UDF # 01
+--Create a scalar valued function that returns the total number of Employees
+--Note : UDF without parameter
+
+CREATE FUNCTION udf_GetNumberOfEmployees()
+RETURNS INT      -- indicates the type of value that the function returns
+AS
+	BEGIN
+		DECLARE @numEmps INT;
+		SELECT @numEmps = COUNT(*) FROM Employee
+
+		RETURN @numEmps -- here we are asking(comanding) the function to return the value
+	END
+GO
+--Now call the function to get the result
+--While calling a udf, don't forget the precede it with the name of the schema that contains it
+
+SELECT dbo.udf_GetNumberOfEmployees() 
+GO
+
+
+
+
+
+--EXAMPLE : UDF # 02
+--Create a udf that returns the average salary of a given employee type
+--Note : UDF with parameter
+
+CREATE FUNCTION udf_GetAVGSalaryPerEmpType(@empType CHAR(1))
+RETURNS DECIMAL(8,2)
+AS
+	BEGIN
+		DECLARE @avgSal DECIMAL(8,2);
+
+		SELECT @avgSal = AVG(salary) 
+		FROM Employee
+		WHERE empType = @empType
+
+		RETURN @avgSal
+	END
+GO
+
+--Now call the function with different empTypes
+
+SELECT dbo.udf_GetAVGSalaryPerEmpType('C')
+
+PRINT  'Average salary for C :'+ CAST(dbo.udf_GetAVGSalaryPerEmpType('C')AS VARCHAR(20))
+
+
+
+
+
+--EXAMPLE : TVF # 01
+--Create a user defined function, tvf_GetEmpTypeAndAVGSalary, that returns empType and their 
+--corresponding Average Salaries. ( Creating UDF that returns a table )
+
+
+CREATE FUNCTION tvf_GetEmpTypeAndAVGSalary()
+RETURNS TABLE
+AS
+	RETURN 
+		(
+			SELECT empType, AVG(salary) [AVGSalaryPerEmpType]
+			FROM Employee
+			GROUP BY empType
+		)
+GO
+
+--Now call your function to get the result
+
+SELECT * FROM dbo.udf_GetEmpTypeAndAVGSalary()
+
+
+
+--EXAMPLE - TVF # 02
+--Create TVF, tvf_TopHighlyPayedEmployees, that can retrieve the full name and dob of the 
+--top 'x' number of highly paied employees.  
+
+
+CREATE FUNCTION tvf_TopHighlyPayedEmployees (@A INT)
+RETURNS TABLE  --Specifies return type
+AS
+RETURN
+	( 
+	  SELECT TOP(@A) Employee.empId, Employee.salary,
+	                 CONCAT(Employee.empLName,' ', Employee.empFName) [Full Name]
+	  FROM Employee
+	  ORDER BY Employee.salary	
+	);
+
+SELECT *
+FROM tvf_TopHighlyPayedEmployees (4)
+GO
+
+DROP FUNCTION tvf_TopHighlyPayedEmployees ()
+
+
+
+
+--EXERCISE : UDF # 01
+--Get the list of employees that earn less than the average salary of their own employee type. 
+--Note : Use udf, that takes empType and returns Salary average, within WHERE clause to define 
+--the criteria. 
+
+SELECT *
+FROM Employee
+WHERE empType = 'P' AND salary <= (dbo.udf_GetAVGSalaryPerEmpType('P'))
+
+GO
+
+
+
+
+--EXERCISE : UDF # 02
+--Use the tdf, tvf_GetEmpTypeAndAVGSalary, created on 'EXAMPLE : TVF # 01' and join with 
+--Employee table to get Employees that earn less than the average salaries of their corresponding types
+
+SELECT E.*, udfemp.AVGSalaryPerEmpType
+FROM dbo.udf_GetEmpTypeAndAVGSalary() udfemp JOIN Employee E ON udfemp.empType = E.empType
+WHERE E.salary <= udfemp.AVGSalaryPerEmpType
+GO
+
+
+
+
+--EXERCISE - UDF # 03
+--Disply the full name, gender, dob and AGE of all employees.
+--NOTE : Create udf that returns AGE by taking DoB as an input parameter
+
+CREATE FUNCTION udf_CalculateAge (@dob DATE) 
+RETURNS INT
+AS 
+	BEGIN
+		DECLARE @Age INT
+		SET @Age=DATEDIFF(YEAR,@dob,GETDATE())
+		RETURN @Age
+
+	END
+
+SELECT E.empId, E.empFName, E.empLName, E.DoB, dbo.udf_CalculateAge(E.DoB) AS [Age]
+FROM Employee AS E
+
+
+
+--EXERCISE - UDF # 04
+--Disply list of Doctor's id along with the number of patients each one had diagnosed. 
+--(use a function to determine number of patients diagnosed )
+
+CREATE FUNCTION udf_CountNumberOfPatientsByDoctor (@docId CHAR(4))
+RETURNS INT
+AS
+	BEGIN
+		DECLARE @COUNT INT
+		SET @COUNT= (
+					  SELECT COUNT(*)
+					  FROM Diagnosis
+					  WHERE Diagnosis.docId=@docId
+					  GROUP BY Diagnosis.docId
+					)
+		RETURN @COUNT
+	END	
+
+SELECT D.docId[Doctor's Id], dbo.udf_CountNumberOfPatientsByDoctor(D.docId)[# of Patient]
+FROM Diagnosis AS D	
+
+
+
+--EXERCISE - UDF # 05 (*)
+--Edit the above code, 'EXERCISE - UDF # 04' to display only the doctors that diagnosed
+--more than 2 patients. 
+
+SELECT D.docId[Doctor's Id], dbo.udf_CountNumberOfPatientsByDoctor(D.docId)[# of Patient]
+FROM Diagnosis AS D	
+WHERE dbo.udf_CountNumberOfPatientsByDoctor(D.docId) > 2
+
+
+
+
+--EXERCISE - UDF # 06 (*)
+--Disply the list of states along with the number of employees living in. 
+--(use a function to calculate the number of employees )
+
+--Method (1)
+CREATE FUNCTION udf_NumberOfEmployeeInState (@State CHAR(2))
+RETURNS INT
+AS
+	BEGIN
+		DECLARE @Result INT
+		SET @Result= (
+						SELECT COUNT(*)
+						FROM Employee AS E1
+						WHERE E1.state=@State
+						GROUP BY E1.[state]
+					 )
+		RETURN @Result
+	END
+
+SELECT DISTINCT E2.state[Statte], dbo.udf_NumberOfEmployeeInState (E2.state)[# of Employees]
+FROM Employee AS E2
+
+
+--Method (2)
+
+CREATE FUNCTION udf_NumberOfEmployeesPerState()
+RETURNS TABLE
+AS
+	RETURN
+	      (
+		   SELECT [state], COUNT(*)[COUNT]
+		   FROM Employee
+		   GROUP BY [state]
+		  )
+GO
+
+
+SELECT * FROM dbo.udf_NumberOfEmployeesPerState()
+
+
+
+
+
+--EXERCISE - UDF # 07 (*)
+--Edit the above code, 'EXERCISE - UDF # 07' to display a state with highest number 
+--of employees. 
+
+SELECT TOP(1) E2.state[Statte], dbo.udf_NumberOfEmployeeInState(E2.state)[# of Employees]
+FROM Employee AS E2
+GROUP BY E2.state
+ORDER BY dbo.udf_NumberOfEmployeeInState(E2.state) DESC
+
+
+
+
+--EXERCISE - UDF # 08 (*)
+--Disply the list of medicines along with the number of time it was prescribed. Use a function
+--to deterime the number of times each medicine was prescribed.
+
+
+--Method (1)
+CREATE FUNCTION udf_MedicinesNumberOfPrescription()
+RETURNS TABLE
+AS
+	RETURN
+	  ( Select mId, count(*)[Number of Times] 
+	    FROM MedicinePrescribed GROUP BY MID
+	   )
+GO
+
+
+
+--Method (2)
+CREATE FUNCTION udf_MedicinesPrescriptionCount (@mId SMALLINT)
+RETURNS INT
+AS
+	BEGIN
+		DECLARE @COUNT INT=0
+		
+		SELECT @COUNT= (
+						SELECT COUNT(*)
+						FROM MedicinePrescribed
+						WHERE MedicinePrescribed.mId=@mId
+		                 )
+		RETURN @COUNT
+	END
+GO
+
+
+SELECT Medicine.*, dbo.udf_MedicinesPrescriptionCount(Medicine.mId) [Count]
+FROM Medicine
+
+
+
+
+
+--EXERCISE - UDF # 09 (*)
+--Modify the code for 'EXERCISE - UDF # 08' to include the name and brand of medicine as an output.
+
+--Using Method(1)
+SELECT MNP.mId,MD.brandName, MD.genericName,MNP.[Count]
+FROM dbo.udf_MedicinesNumberOfPrescription() MNP JOIN Medicine MD ON MNP.mId=MD.mId 
+
+
+--Using Method (2)
+SELECT Medicine.brandName, Medicine.genericName, dbo.udf_MedicinesPrescriptionCount(Medicine.mId) [Count]
+FROM Medicine
+
+
+
+
+
+--EXERCISE - UDF # 10 (*)
+--Create a function, UDF, that perform addition, subtraction, multiplication and divisioin. 
+
+CREATE FUNCTION udf_Calculator(@x1 INT, @x2 INT, @operation CHAR(1))
+RETURNS DECIMAL(8,2)
+AS
+	BEGIN
+	
+		DECLARE @RESULT DECIMAL (8,2)
+
+		IF @operation='+'
+			SET @RESULT = @x1+@x2
+		ELSE IF @operation='-'
+			SET @RESULT=@x1-@x2 
+		ELSE IF @operation='*'
+			SET @RESULT=@x1*@x2 
+		ELSE IF @operation='/'
+			SET @RESULT=@x1/@x2 
+
+		RETURN @RESULT
+	END
+
+
+SELECT dbo.udf_Calculator(10, 2, '/')[Result]
+
+
+
+
+--EXERCISE - TVF # 01
+--Create TVF that can retrive the employee id, full name and dob of the ones that earn 
+--more than a given salary.
+
+
+
+
+
+
+--EXERCISE - TVF # 02
+--Create TVF that can retrive the number of times each medicine was prescribed. 
+
+CREATE FUNCTION tvf_MedicineNumberOfPrescription()
+RETURNS TABLE
+AS
+	RETURN
+		(
+			SELECT mId,COUNT(*)[Count]
+			FROM MedicinePrescribed
+			GROUP BY mId	
+		)
+GO
+
+
+SELECT *
+FROM dbo.tvf_MedicineNumberOfPrescription()
+
+
+--Include BrandName and GenericName of each medicine
+
+
+SELECT MD.mId, MD.brandName, MD.genericName, MNP.Count [COUNT]
+FROM dbo.tvf_MedicineNumberOfPrescription() MNP JOIN Medicine MD ON MD.mId=MNP.mId
+
+
+SELECT * FROM Medicine
+
+
+--EXERCISE - TVF # 03
+--Create TVF that can return a list of employees with a given gender.
+
+
+
+
+
+--EXERCISE - TVF # 04
+--Create TVF that can return full name of patients that are diagnosed with a given disease.
+--Note : The diseased is identified by name only.
+
+
+
+
+
+/*******************    COMMON TABLE EXPRESSIONS (CTEs)        ***************************************
+
+
+                           COMMON TABLE EXPRESSIONS (CTEs)
+
+		- It is a TEMPORARY result set, that can be referenced within a SELECT, INSERT,
+		  UPDATE or DELETE statements that immediately follows the CTE.
+		- Is a named table expressions defined in a query
+		- Provides a mechanism for defining a subquery that may then be used elsewhere in a query
+*****	- Should be used after the statement that created it
+		- Defined at the beginning of a query and may be refernced multiple times in the outer query
+		- Defined in 'WITH clause'
+		- Does not take parameter (unlike views, functions and stored procedures)
+		- Does not reside in database (unlike views, functions and stored procedures)
+
+	Syntax:
+
+		WITH <CTE_name> [Optional Columns list corresponding to the values returned from inner select]
+		AS	(
+				<Select Statement>
+			)
+		...
+		...
+		...
+		< SELECT query where the CTE is utilized >
+
+*/
+
+
+--EXAMPLE - CTE # 01
+--Create a CTE that returns medicines and number of times they are prescribed (mId, NumberOfPrescriptions)
+--Then join the created CTE with Medicine table to get the name and number of prescription of the medecines
+
+WITH cte_MedicinePrescriptionCount (mid,NumberOfPrescriptions)
+AS
+	(
+		SELECT mId, count(*) NumberOfPrescriptions
+		FROM MedicinePrescribed
+		GROUP BY mId
+	)
+SELECT ctemp.mId, m.brandName, ctemp.NumberOfPrescriptions
+FROM cte_MedicinePrescriptionCount ctemp JOIN Medicine m ON ctemp.mId = m.mId
+GO
+
+
+
+--EXAMPLE - CTE # 02
+--Create CTE that returns the average salaries of each type of employees
+WITH cte_TypeEmployeeAgerageSalaries 
+AS
+  ( 
+	SELECT Employee.empType,CONVERT(DECIMAL(8,2),AVG(EMPLOYEE.salary))[AVG SALARY]
+	FROM Employee
+	GROUP BY EMPLOYEE.empType
+  )
+SELECT *
+FROM cte_TypeEmployeeAgerageSalaries
+
+
+
+
+--EXERCISE - CTE # 01
+--Modify the above code to sort the output by empType in descending order. 
+WITH cte_TypeEmployeeAgerageSalaries
+AS
+  ( 
+	SELECT empType,CONVERT(DECIMAL(8,2),AVG(salary))[AVG SALARY]
+	FROM Employee
+	GROUP BY EMPLOYEE.empType
+  )
+SELECT *
+FROM cte_TypeEmployeeAgerageSalaries
+ORDER BY cte_TypeEmployeeAgerageSalaries.empType DESC
+
+
+
+
+
+--EXERCISE - CTE # 02
+--Create CTE to display PrescriptionId, DiagnossisNo, Prescription Date for each patient. Then use  
+--the created CTE to retrive the dossage and number of allowed refills. 
+WITH cte_DiagnosisPrescription
+AS
+	(
+	SELECT DI.mrn [Medical Record No],prescriptionId [Prescription ID], 
+		   DI.diagnosisNo [Diagnosis No], PR.prescriptionDate [Prescription Date]
+	FROM Prescription AS PR JOIN Diagnosis AS DI ON PR.diagnosisNo=DI.diagnosisNo
+                            JOIN Patient AS PA ON PA.mrn=DI.mrn
+	 )
+SELECT DP.*, MP.dosage, MP.numberOfAllowedRefills
+FROM cte_DiagnosisPrescription AS DP JOIN MedicinePrescribed AS MP ON MP.prescriptionId=DP.[Prescription ID]
+
+
+
+--EXERCISE - CTE # 03 (*)
+--Create CTE to display the list of patients. The result must include mrn, full name, gender, dob and ssn.
+
+WITH cte_PatientList
+AS
+	(
+		SELECT Patient.mrn, CONCAT(Patient.pFName,' ', Patient.pLName) AS [Full Name], 
+		       Patient.gender, Patient.PDoB, Patient.SSN
+		FROM Patient
+	)
+SELECT * FROM cte_PatientList
+
+
+
+--EXERCISE - CTE # 04 (*)
+--Modify the above script to make use of the CTE to display the name of a disease
+--each patient is diagnosed 
+WITH cte_PatientList
+AS
+	(
+		SELECT Patient.mrn, CONCAT(Patient.pFName,' ', Patient.pLName) AS [Full Name], 
+		       Patient.gender, Patient.PDoB, Patient.SSN
+		FROM Patient
+	)
+SELECT CTE_PA.mrn, CTE_PA.[Full Name], DIS.dName 
+FROM cte_PatientList AS CTE_PA JOIN Diagnosis AS DIA ON DIA.mrn=CTE_PA.mrn
+							   JOIN Disease AS DIS ON DIS.dId=DIA.dId
+
+
+
+
+--EXERCISE - CTE # 05 (*)
+--Create CTE to display DiagnossisNo, DiagnossisDate and Disease Type of all Diagnossis made. Later use the CTE 
+--to include the rank of the specialization and rank of the doctor. 
+WITH cte_DiagnosisDisease
+AS	(
+		SELECT DA.diagnosisNo [Diagnosis No], DA.diagDate [Diagnosis Date], 
+			   DI.dType [Diagnosis Type], DA.docId [Doctor Id]
+		FROM Diagnosis AS DA JOIN Disease AS DI ON DA.dId=DI.dId
+	)
+SELECT DD.*, DO.specialization,DO.[rank]
+FROM DOCTOR AS DO JOIN cte_DiagnosisDisease AS DD ON DO.docId=DD.[Doctor Id]
+
+
+
+
+--EXERCISE - CTE # 06 (*)
+--Modify the above code, to incude doctor's full name and dob. 
+WITH cte_DiagnosisDisease
+AS	(
+		SELECT DA.diagnosisNo [Diagnosis No], DA.diagDate [Diagnosis Date], 
+			   DI.dType [Diagnosis Type], DA.docId [Doctor Id]
+		FROM Diagnosis AS DA JOIN Disease AS DI ON DA.dId=DI.dId
+	)
+SELECT DD.*, DO.specialization,DO.[rank], CONCAT(EM.empFName,' ', EM.empLName) [Full Name], EM.DoB
+FROM DOCTOR AS DO JOIN cte_DiagnosisDisease AS DD ON DO.docId=DD.[Doctor Id]
+				  JOIN Employee AS EM ON EM.empId=DO.empId
+
+
+
+
+
+--EXERCISE - CTE # 07 (*)
+--Create CTE that returns the average salaries of each type of employees. Then use the same CTE
+--to display the list of employees that earn less than their respective employee type average salaries
+WITH cte_EmployeeTypeSalaryAverage
+AS 
+	(
+		SELECT Employee.empType, CONVERT(DECIMAL (8,2),
+		       AVG(Employee.salary)) [Average Salary] 
+	    FROM Employee 
+		GROUP BY Employee.empType
+	)
+SELECT * 
+FROM Employee AS EM JOIN cte_EmployeeTypeSalaryAverage AS CTE_EMP ON EM.empType=CTE_EMP.empType
+WHERE EM.salary<CTE_EMP.[Average Salary]
+
+
+
+
+--EXERCISE - CTE # 08 (*)
+--Create CTE that calculates the average salaries for each type of employees
+
+
+
+
+--EXERCISE - CTE # 09 (*)
+--Use the CTE created for 'EXERCISE - CTE # 09' and provide the list of employees that earn less more than
+--the average salary of their own gender.
+
+
+
+
+--EXERCISE - CTE # 10 (*)
+--Create CTE that calculates the average salaries for female employees. Use the created CTE to display
+--list of male employees that earn less than the average salary of female employees.
+
+
+
+
+
+
+
+
+
+/*********************************    TRIGGERS    ***********************************************
+
+TRIGGERS - 
+	- Are a special type of stored procedures that are fired/executed automatically in response
+	  to a triggering action
+	- Helps to get/capture audit information
+	- Like stored procedures, views or functions, triggers encapsulate code.  
+	- Triggers get fired (and run) by themselves only when the event for which they are 
+	  created for occurs, i.e. We do not call and run triggers, they get fired/run 
+	  by by their own
+
+
+	Types of triggers
+		- DML triggers
+			: Fires in response to DML events (Insert/Delete/Update)
+		- DDL triggers
+			: Fires in response to DDL events (Create/Alter/Drop)
+		- login triggers
+			: Fires in response to login events
+
+	DML Triggers
+		There are two types of DML Triggers: AFTER/FOR and INSTEAD OF, and there are 
+		three DML events (INSERT, DELETE and UPDATE) under each type - 
+
+			FOR/AFTER	INSERT
+						DELETE
+						UPDATE
+
+			INSTEAD OF	INSERT
+						DELETE
+						UPDATE
+
+		
+	Syntax: 
+		Whenever a trigger is created, it must be created for a given table, and for a 
+		specific event, 
+		
+		CREATE TRIGGER <trigger name>                         -- name of the trigger
+		ON <table name>										  -- name of table
+		<FOR/AFTER | INSTEAD OF INSERT/DELETE/UPDATE>         -- specific event 
+		AS 
+			BEGIN
+				<your t-sql statement>
+			END	
+
+
+	Uses for triggers:
+		- Enforce business rules
+		- Validate input data
+		- Generate a unique value for a newly-inserted row in a different file.
+		- Write to other files for audit trail purposes
+		- Query from other files for cross-referencing purposes
+		- Access system functions
+		- Replicate data to different files to achieve data consistency
+
+*/
+
+
+USE HRMDB
+GO
+
+
+
+--EXERCISE - TRIGGER # 01 (FOR/AFTER) UPDATE
+--Create a trigger that displays a message 'Disease table is updated' when the table gets updated 
+
+CREATE TRIGGER tr_Disease_After_Update
+ON Disease
+AFTER UPDATE
+AS
+	BEGIN
+		PRINT 'Disease table is updated'
+	END
+GO
+
+
+--First check the content dType for dId=5 before updating
+SELECT * FROM Medicine
+
+--Update the table, 
+UPDATE Disease SET dType='Contangeous' WHERE dId=10
+
+
+--Check the table after update, 
+SELECT * FROM Medicine
+
+
+--Drop/Delete a trigger
+DROP TRIGGER tr_Disease_After_Update
+
+
+
+--EXERCISE - TRIGGER # 02 (FOR/AFTER INSERT)
+--Create a trigger that displays a message 'New disease is inserted' when a new record gets 
+--instered on disease table
+
+CREATE TRIGGER trg_Disease_After_Insert 
+ON Disease
+AFTER INSERT
+AS
+	PRINT 'Note : New disease is inserted into Disease Table'
+GO
+
+--Observe the effect of the above trigger by inserting a row into Disease table
+INSERT INTO Disease VALUES (8, 'Missiles','D4','Infectious', 'Contageous')
+GO
+
+
+DROP TRIGGER trg_Disease_After_Insert 
+
+
+--EXERCISE - TRIGGER # 03 (FOR/AFTER) DELETE
+--Create a trigger that displays a message 'A record is deleted from HotelCust table' when a new record gets 
+--deleted from HotelCust table
+
+CREATE TRIGGER tr_HotelCust_After_Delete
+ON HotelCust
+AFTER DELETE
+AS 
+	BEGIN
+		PRINT ' A record is delefted from HotelCust table'
+	END
+GO
+
+
+DELETE FROM HotelCust WHERE fName='Belew'
+
+DROP TRIGGER tr_HotelCust_After_Delete
+
+
+
+
+--EXERCISE - TRIGGER # 04 (INSTEAD OF INSERT)(*)
+--Create a trigger that displays a message 'A new record was about to be inserted into HotelCust table' when 
+--a new record was about to be inserted on HotelCust table
+
+CREATE TRIGGER tr_HotelCust_Instead_Of_Insert
+ON HotelCust
+INSTEAD OF INSERT
+AS
+	BEGIN
+		PRINT 'A new record was about to be inserted'
+	END
+GO
+
+
+
+INSERT INTO HotelCust VALUES ('Abebe', 'Kebede', '77777777777', '12/3/1980')
+
+DROP TRIGGER tr_HotelCust_Instead_Of_Insert
+ 
+
+
+
+--EXERCISE - TRIGGER # 05 (INSTEAD OF UPDATE) (*)
+--Create a trigger that displays a message 'A record was about to be UPDATED into Medicine table' when 
+--a record was about to be updated on Medicine table
+
+CREATE TRIGGER tr_Medicine_Insted_of_Update
+ON Medicine
+INSTEAD OF UPDATE
+AS
+	BEGIN
+		PRINT 'A record was about to be UPDATED into Medicine table'
+	END
+GO
+
+--Check the content of the table before the attempt for update,
+SELECT * FROM Medicine
+
+UPDATE Medicine SET [unitPrice] =25 WHERE [mId]=8 
+
+DROP TRIGGER tr_Medicine_Insted_of_Update
+
+
+
+
+--EXERCISE - TRIGGER # 06 (INSTEAD OF DELETE) (*)
+--Create a trigger that displays a message 'A record was about to be DELETED from RentalCust table' when 
+--a record was about to be deleted on RentalCust table
+
+CREATE TRIGGER tr_RentalCust_Instead_of_Delete
+ON RentalCust
+INSTEAD OF DELETE
+AS
+	BEGIN
+		PRINT 'A record was about to be DELETED from RentalCust table on '+ CAST(GETDATE() AS NVARCHAR(25))
+	END
+GO
+
+
+--Check the content of the table before the attempt for update,
+SELECT * FROM RentalCust
+
+DELETE FROM RentalCust WHERE RentalCust.firstName='Mahder' 
+
+DROP TRIGGER tr_RentalCust_Instead_of_Delete
+
+
+/*
+The use of 'inserted' table and 'deleted' table by triggers.
+
+	- DML trigger statements use two special tables: the deleted table and the inserted tables. 
+	- SQL Server automatically creates and manages these two tables. 
+	- They are temporary, that only lasts within the life of trigger
+	- These two tables can be used to test the effects of certain data modifications 
+	  and to set conditions for DML trigger actions.
+
+	- In DML triggers, the inserted and deleted tables are primarily used to perform the following:
+		- Extend referential integrity between tables.
+		- Insert or update data in base tables underlying a view.
+		- Test for errors and take action based on the error.
+		- Find the difference between the state of a table before and after a data 
+		  modification and take actions based on that difference.
+
+
+**** - The deleted table stores copies of the affected rows during DELETE and UPDATE statements.
+***  - The inserted table stores copies of the affected rows during INSERT and UPDATE statements. 
+
+
+*/
+
+
+
+--EXERCISE - TRIGGER # 07  (Using 'inserted' table)
+--Create a trigger that displays the inserted record on RentalCust table
+
+CREATE TRIGGER tr_RentalCust_inserted
+ON RentalCust
+FOR INSERT
+AS 
+	BEGIN
+		SELECT * FROM inserted 
+		PRINT 'THE FOLLOWING DATA IS INSERTED'
+	END
+GO
+
+
+INSERT INTO RentalCust ( [firstName], [lastName], [social], [DoB], [phoneNo])
+	VALUES ('Belachew', 'Degefa', '33333333333', '1995-02-14','444-444-4444')
+
+DROP TRIGGER tr_RentalCust_inserted
+
+
+
+--EXAMPLE - TRIGGER # 08  (Using 'deleted' table)
+CREATE TRIGGER tr_Medicine_deleted
+ON Medicine
+FOR DELETE
+AS 
+	BEGIN
+		SELECT * FROM deleted
+		PRINT 'The following record is deleted from Medecine table'
+	END
+GO
+
+
+DELETE FROM Medicine WHERE mId=9
+
+SELECT * FROM Medicine
+
+DROP TRIGGER tr_Medicine_deleted
+
+
+
+--EXAMPLE - TRIGGER # 09  (Using 'deleted' table)
+--Create following audit table, that maintains/captures the records deleted/removed from HotelCust
+--and create a trigger that inititate data backup when a record is deleted from HotelCust table 
+--Note : Use FOR/AFTER DELETE trigger as required.
+
+CREATE TABLE HotelCust_Delete_Audit
+(
+	AuditId INT IDENTITY(1,1),
+	[fName] VARCHAR(20), 
+	[lName] VARCHAR(50), 
+	[SSN] CHAR(11), 
+	[DoB] DATE,
+	[Date] DATETIME  --captures the date data deletion took place
+);
+GO
+
+
+CREATE TRIGGER tr_HotelCust_After_Delete
+ON HotelCust
+AFTER DELETE
+AS
+	BEGIN
+			INSERT INTO HotelCust_Delete_Audit
+		    SELECT d.fName,d.lName,d.SSN, d.DoB,GETDATE()
+		    FROM deleted d
+	END
+GO
+
+
+
+DELETE FROM HotelCust WHERE HotelCust.fName='Alemu'
+
+SELECT * FROM HotelCust
+SELECT * FROM HotelCust_Delete_Audit
+
+DROP TABLE tr_HotelCust_After_Delete
+DROP TRIGGER tr_HotelCust_After_Delete
+
+
+
+--EXERCISE - TRIGGER # 10  (Using 'inserted' table)
+--Create Audit table, RentalCustInsertAudit, that maintains/captures the records inserted 
+--on RentalCust table. The audit table also capture the date the insertion took place
+--Note : Use FOR/AFTER INSERT trigger as required.
+
+CREATE TABLE RentalCust_Insert_Audit
+(
+	firstName VARCHAR(20),
+	lastName VARCHAR(20),
+	social CHAR(11),
+	DoB DATE,
+	phoneNo CHAR(12),
+	dateInsert DATE
+)
+
+
+CREATE TRIGGER tr_RentalCustomer_After_Insert
+ON RentalCust
+AFTER INSERT
+AS
+	BEGIN
+		INSERT INTO RentalCust_Insert_Audit
+		SELECT i.firstName, i.lastName, i.social, i.DoB, i.phoneNo, GETDATE()
+		FROM inserted AS i
+
+	END
+GO
+
+
+INSERT INTO RentalCust	
+	VALUES ('Tesfaye', 'Alemu', '55555555555', '1990-06-06', '123-456-6789')
+
+SELECT * FROM RentalCust
+SELECT * FROM RentalCust_Insert_Audit
+
+
+DROP TABLE RentalCust_Insert_Audit
+DROP TRIGGER tr_RentalCustomer_After_Insert
+
+
+
+--EXERCISE - TRIGGER # 11  (AFTER INSERT TRIGGER, Application for Audit) (*)
+--Create Audit table, Medicine_Insert_Audit, that maintains/captures the new mId, BrandName, 
+--the person that made the entery, the date/time of data entery.
+--Use system function 'SYSTEM_USER' to get login detail of the user that perform data insertion
+
+CREATE TABLE Medicine_Insert_Audit 
+(
+	medicineId SMALLINT, 
+	medicineBrandName VARCHAR(40), 
+	whoInserted VARCHAR(100), 
+	insertedTime DATETIME
+);
+GO
+
+
+--Now create a trigger that automagically inserts data into the MedicineInsertAudit table, 
+--whenever data inserted into Medicine table
+
+CREATE TRIGGER trg_Medicine_After_Insert 
+ON Medicine
+AFTER INSERT
+AS
+	BEGIN
+		INSERT INTO Medicine_Insert_Audit
+		SELECT i.mId, i.brandName, SYSTEM_USER, GETDATE()
+		FROM inserted i
+	END
+GO
+
+
+--Test how the trigger works by inserting one row data to Medicine table
+SELECT * FROM Medicine
+SELECT * FROM Medicine_Insert_Audit
+
+
+INSERT INTO Medicine VALUES (11, 'Retina.a', 'Treation',100, 'Dermal...', '2021-12-31', 2.00)
+
+
+DROP TABLE Medicine_Insert_Audit
+DROP TRIGGER trg_Medicine_After_Insert
+
+
+
+--EXERCISE - TRIGGER # 12 (AFTER DELETE TRIGGER, Application for Archive) (*)
+--Create and use archieve table, Disease_Delete_Archive, that archieves the disease information
+--deleted from Disease table. The same table must also capture the time and the person 
+--that does the delete.
+--NOTE : Use system function SYSTEM_USER to return the system user.      
+
+CREATE TABLE Disease_Archive
+(
+	diseaseId INT, 
+	diseaseName VARCHAR(100),
+	diseaseCategoryId CHAR(2), 
+	diseaseCategory VARCHAR(50), 
+	diseaseType VARCHAR(40),
+	whoDeleted VARCHAR(40), 
+	deletedDate DATE
+);
+
+GO
+
+CREATE TRIGGER trg_Disease_After_Delete 
+ON Disease
+AFTER DELETE
+AS
+	INSERT INTO Disease_Archive
+	SELECT d.*, SYSTEM_USER, GETDATE()
+	FROM deleted d
+GO
+
+
+---Test the trigger by deleting the latest inserted disease
+SELECT * FROM Disease
+SELECT * FROM Disease_Archive
+
+DELETE Disease WHERE dId = 8
+GO
+
+
+DROP TRIGGER trg_Disease_After_Delete
+DROP TABLE Disease_Archive
+
+
+
+
+--EXERCISE - TRIGGER # 13  (*)
+--Create a trigger that displays the following kind of message when a record is deleted from HotelCust table.
+--Assume the record for 'Abebe' is deleted, the trigger should display
+--			'A record for Abebe is deleted from HotelCust table'  
+
+
+ALTER TRIGGER tr_HotelCust_For_Delete
+ON HotelCust
+FOR DELETE
+AS 
+	BEGIN
+		DECLARE @deleted_fName varchar(20)
+		SET @deleted_fName=(SELECT d.fName FROM deleted d)
+		PRINT 'A record for '+ @DELETED_FNAME +' is deleted from HotelCust table'
+	END
+GO
+
+
+
+--EXERCISE - TRIGGER # 14 (AFTER UPDATE TRIGGER, Application for audit) (*)
+--Create an After Update Trigger on Employee table that documents the old and new salary information of 
+--an Employee and the date salary update was changed. 
+--First create EmployeePromotionTracker (empId, promoDate, oldSalary, newSalary)
+
+CREATE TABLE Employee_Promotion_Tracker
+(
+	empId CHAR(5),
+	empFullName VARCHAR(50),
+	SSN CHAR(11),
+	promoDate DATE,
+	oldSalary DECIMAL(8,2),
+	newSalary DECIMAL(8,2)
+);
+GO
+
+CREATE TRIGGER trg_Employee_After_Salary_Increment 
+ON Employee
+AFTER UPDATE
+AS
+	INSERT INTO Employee_Promotion_Tracker
+	SELECT d.empId, CONCAT(d.empFName,' ',d.empLName), d.SSN, GETDATE(), d.salary, i.salary
+	FROM deleted d JOIN inserted i ON d.empId = i.empId
+GO
+
+
+--Now check the tigger by updating one employee salary
+--First check the data in both tables
+
+
+SELECT * FROM Employee
+SELECT * FROM Employee_Promotion_Tracker
+
+UPDATE Employee SET salary = 90000.00 WHERE empId = 'EMP01'
+
+
+SELECT *, CONVERT(DECIMAL(3,2),(newSalary-oldSalary)/oldSalary) IncrementRate
+FROM EmployeePromotionTracker
+
+
+
+
+DROP TABLE Employee_Promotion_Tracker
+DROP TRIGGER trg_Employee_After_Salary_Increment
+
+
+
+
+
+--EXERCISE - TRIGGER # 15  ( AFTER UPDATE )
+--Create the following audit table, RentalCust_Update_Audit, and code a trigger that 
+--can maintains/captures the updated record/s of RentalCust table.
+ 
+--Assume both the fist name and DoB changed during update, The 'Message' column should capture 
+--a customized statement as follows
+--	  'First Name changed from 'Abebe' to 'Kebede', DoB changed from 'old DoB' to 'new DoB'
+
+--Similarly the 'Message' column should be able to capture all the changes that took place.
+
+
+CREATE TABLE RentalCust_Update_Audit
+(
+	AuditID INT IDENTITY (1,1),
+	[Message] VARCHAR(1000),
+
+)
+
+
+CREATE TRIGGER trg_RentalCust_AFTER_UPDATE
+ON RentalCust
+AFTER UPDATE
+AS
+	BEGIN
+		DECLARE @fName_old VARCHAR(20), @lName_old VARCHAR(20),
+		        @SSN_old CHAR(11), @DoB_old DATE,@phoneNo_old CHAR(11),
+			    @fName_new VARCHAR(20), @lName_new VARCHAR(20),
+		        @SSN_new CHAR(11), @DoB_new DATE, @phoneNo_new CHAR(11)
+
+		SELECT @fName_old=d.firstName, @lName_old=d.lastName, 
+		       @SSN_old=d.social, @DoB_old=d.DoB, @phoneNo_old=d.phoneNo
+		FROM deleted d
+
+		SELECT @fName_new=i.firstName, @lName_new=i.lastName, @SSN_new=i.social, 
+		       @phoneNo_new=i.phoneNo, @DoB_new=i.DoB, @SSN_new=i.social
+		FROM inserted i
+
+		DECLARE @MESSAGE VARCHAR(500)
+		SET @MESSAGE=''
+
+		IF (@fName_new<>@fName_old)
+			SET @MESSAGE='First Name changed from '+@fName_old+' to '+@fName_new+'. '
+		IF (@lName_new<>@lName_old)
+			SET @MESSAGE=@MESSAGE+'Last Name changed from '+@lName_old+' to '+@lName_new+'. '
+		IF (@SSN_old<>@SSN_new)
+			SET @MESSAGE=@MESSAGE+'SSN changed from '+@SSN_old+' to '+@SSN_new+'. '
+		IF (@DoB_old<>@DoB_new)
+			SET @MESSAGE=@MESSAGE+'DoB changed from '+CAST(@DoB_old AS VARCHAR(10))+' to '+
+			             CAST(@DoB_new AS VARCHAR(10))+'. '
+		IF (@phoneNo_old<>@phoneNo_new)
+			SET @MESSAGE=@MESSAGE+'Phone number changed from '+@phoneNo_old+' to '+@phoneNo_new+'. '
+
+		INSERT INTO RentalCust_Update_Audit ([Message])
+			VALUES (@MESSAGE)
+
+	END
+GO
+
+
+SELECT * FROM RentalCust
+SELECT * FROM RentalCust_Update_Audit
+
+
+
+UPDATE RENTALCUST SET RENTALCUST.firstName='SECOND' WHERE RENTALCUST.lastName='SECOND'
+
+
+DROP TRIGGER tr_RentalCust_After_Update
+DROP TABLE RentalCust_Update_Audit
+
+
+
+--EXERCISE - TRIGGER # 16 (*)
+--Create Medicine_Audit table, with two columns having Integer with IDENDITY function and nvarchar(500) 
+--data types. The table must insert a description for the changes made on Medicine table during UPDATE
+
+
+CREATE TABLE Medicine_Audit
+(
+	ID INTEGER IDENTITY (1,1),
+	[Description] VARCHAR(500)
+)
+
+
+ALTER TRIGGER tr_Medicine_AFTER_UPDATE
+ON Medicine
+AFTER UPDATE
+AS
+	BEGIN
+		DECLARE @mId smallint			
+		DECLARE @old_brandName VARCHAR(40),@new_brandName VARCHAR(40)
+		DECLARE @old_genericName VARCHAR(50), @new_genericName VARCHAR(50)
+		DECLARE @old_qtyInStock INT, @new_qtyInStock INT
+		DECLARE @old_use VARCHAR(50), @new_use VARCHAR(50)
+		DECLARE @old_expDate DATE, @new_expDate DATE
+		DECLARE @old_unitPrice INT, @new_unitPrice INT
+
+		DECLARE @DESCRIPTION NVARCHAR(500)
+
+		SELECT @new_brandName=ins.brandName, @new_genericName=ins.genericName,@new_qtyInStock=ins.qtyInStock,
+			   @new_use=ins.[use],@new_expDate=ins.expDate, @new_unitPrice=ins.unitPrice      
+		FROM inserted as ins
+
+		SELECT @mId=del.mId, @old_brandName=del.brandName, @old_genericName=del.genericName,
+		       @old_qtyInStock=del.qtyInStock,@old_use=del.[use], @old_expDate=del.expDate, 
+			   @old_unitPrice=del.unitPrice        
+		FROM deleted as del
+
+		SET @DESCRIPTION = 'A medicine with mId ='+ CAST (@mId as nvarchar(4))+ ' changes '
+
+		IF(@new_brandName<>@old_brandName)
+			SET @DESCRIPTION = @DESCRIPTION + ' brand name from ' + CAST (@old_brandName as nvarchar(20)) 
+							  + ' to ' + CAST (@new_brandName as nvarchar(20))
+		IF(@new_genericName<>@old_genericName)
+			SET @DESCRIPTION = @DESCRIPTION + ' generic name from ' + CAST (@old_genericName as nvarchar(20)) 
+			                  + ' to ' + CAST (@new_genericName as nvarchar(20))
+		IF(@old_qtyInStock<>@new_qtyInStock)
+			SET @DESCRIPTION = @DESCRIPTION + ' quantity in stock from ' + CAST (@old_qtyInStock as nvarchar(15))
+							 + ' to ' + CAST (@new_qtyInStock as nvarchar(15))
+		IF(@old_use<>@new_use)
+			SET @DESCRIPTION = @DESCRIPTION + ' use from ' + CAST (@old_use as nvarchar(50))
+							 + ' to ' + CAST (@new_use as nvarchar(50))
+		IF(@old_expDate<>@new_expDate)
+			SET @DESCRIPTION = @DESCRIPTION + ' Expary date changed from  ' + CAST (@old_expDate as nvarchar(15))
+							 + ' to ' + CAST (@new_expDate as nvarchar(15))
+		IF(@old_unitPrice<>@new_unitPrice)
+			SET @DESCRIPTION = @DESCRIPTION + ' Unit Price changed from  ' + CAST (@old_unitPrice as nvarchar(15))
+							 + ' to ' + CAST (@new_unitPrice as nvarchar(15))
+		ELSE
+			PRINT 'FOR TEST PURPOSE ONLY'
+
+		INSERT INTO Medicine_Audit ([Description]) VALUES (@DESCRIPTION)
+			
+	END
+GO
+
+
+UPDATE Medicine SET brandName='DDD', genericName='DDD', qtyInStock=444, 
+                   Medicine.[use]='DDD', MEDICINE.expDate='2018-12-12', MEDICINE.unitPrice=44 
+	   WHERE MEDICINE.mId=11
+
+
+SELECT * FROM Medicine_Audit
+SELECT * FROM Medicine
+
+
+DROP TRIGGER tr_Medicine_AFTER_UPDATE
+DROP TABLE Medicine_Audit
+
+
+
+--EXERCISE - TRIGGER # 18 (After Delete Trigger ) (*)
+--Create a trigger that archieve the list of Terminated/Deleted Employees.
+
+
+--Problem analysis :
+--The employee can be a Doctor, PharmacyPersonel or Just Employee. Since, Doctor and 
+--PharmacyPersonnel tables depend on the Employee table, we need to first redfine the foreign keys
+--to allow employee delete - with cascading effect. Then the next challenge is, deleting a Doctor
+--also affecs the Diagnosis table, we should redefine the foreign key between Doctor and Diagnosis
+--table to allow the delete - with SET NULL effect
+
+
+--Steps to follow,
+--Step (1): Drop the Foreign Key Constraints from the Doctor, PharmacyPersonel, Diagnosis, and MedicineDispense tables
+--          and redefine FK constraints for all child tables
+--Step (2): Create the Employee_Terminated_Archive table
+--Step (3): Create the trigger that inserts the deleted employee data into Employee_Terminated_Archive
+
+
+
+--Step (1): Drop the Foreign Key Constraints from the Doctor, PharmacyPersonel, Diagnosis, and MedicineDispense tables
+--          and redefine FK constraints for all child tables
+
+ALTER TABLE Doctor
+DROP CONSTRAINT [FK_Doctor_Employee_empId]
+
+
+ALTER TABLE PharmacyPersonel
+DROP CONSTRAINT [FK_PharmacyPersonel_empId]
+
+
+ALTER TABLE Diagnosis
+DROP CONSTRAINT [FK_Diagnosis_Doctor_docId]
+
+
+ALTER TABLE MedicineDispense
+DROP CONSTRAINT [FK_MedicineDispense_ppId]
+
+
+
+--: Now redefine the Constraints
+
+ALTER TABLE Doctor
+ADD CONSTRAINT FK_Doctor_Employee_empId FOREIGN KEY (empId) REFERENCES Employee(empId) ON DELETE CASCADE ON UPDATE CASCADE
+
+
+ALTER TABLE PharmacyPersonel
+ADD CONSTRAINT FK_PharmacyPersonel_empId FOREIGN KEY (empId) REFERENCES Employee(empId) ON DELETE CASCADE ON UPDATE CASCADE
+
+
+
+ALTER TABLE Diagnosis
+ADD CONSTRAINT FK_Diagnosis_Doctor_docId FOREIGN KEY (docId) REFERENCES Doctor(docId) ON DELETE SET NULL ON UPDATE CASCADE
+
+
+ALTER TABLE MedicineDispense
+ADD CONSTRAINT FK_MedicineDispense_ppId FOREIGN KEY (ppId) REFERENCES PharmacyPersonel (ppId) ON DELETE CASCADE ON UPDATE CASCADE
+
+
+
+--Step 2: Create the Employee_Terminated_Archive table
+
+CREATE TABLE Employee_Terminated_Archive
+(
+	empId char(5) NOT NULL,
+	empFName varchar(25) NOT NULL,
+	empLName varchar(25) NOT NULL,
+	SSN char(11) NOT NULL,
+	DoB date NOT NULL,
+	gender char(1) NOT NULL,
+	salary decimal(8,2),
+	employedDate date NOT NULL,
+	strAddress varchar(30) NOT NULL,
+	apt varchar(5) NULL,
+	city varchar(25) NOT NULL,
+	state char(2) NOT NULL,
+	zipCode char(5) NOT NULL,
+	phoneNo char(14) NOT NULL,
+	email varchar(50) NULL,
+	empType varchar(20) NOT NULL,
+);
+
+
+GO
+USE HRMDB;
+GO
+
+
+--Step3: Create the trigger that inserts the deleted employee data into Employee_Terminated_Archive table 
+--by checking the role of the employee
+
+CREATE TRIGGER trg_Employee_Termination_After_Delete
+ON Employee
+AFTER DELETE
+AS
+BEGIN
+
+	INSERT INTO Employee_Terminated_Archive
+	SELECT d.*
+	FROM deleted d
+
+END
+GO
+
+
+--Now test the trigger at work  by deleting an Employee - employee data will be archived, but 
+--the employee role wont be set as expected
+
+
+DELETE Employee WHERE empId = 'EMP21'
+
+SELECT * FROM Employee
+
+SELECT * FROM Employee_Terminated_Archive
+
+
+
+DROP TABLE Employee_Terminated_Archive
+DROP TRIGGER trg_Employee_Termination_After_Delete
+
+
+
+
+--EXERCISE - TRIGGER # 19 (*)
+--Modify the above trigger and archieve table to include the role of the employee if he/she is Doctor 
+--or PharmacyPersonel, and the date the employee was terminated.
+
+CREATE TABLE Employee_Terminated_Archive_Role_Date
+(
+	empId char(5) NOT NULL,
+	empFName varchar(25) NOT NULL,
+	empLName varchar(25) NOT NULL,
+	SSN char(11) NOT NULL,
+	DoB date NOT NULL,
+	gender char(1) NOT NULL,
+	salary decimal(8,2),
+	hiredDate date NOT NULL,
+	strAddress varchar(30) NOT NULL,
+	apt varchar(5) NULL,
+	city varchar(25) NOT NULL,
+	state char(2) NOT NULL,
+	zipCode char(5) NOT NULL,
+	phoneNo char(14) NOT NULL,
+	email varchar(50) NULL,
+	empType varchar(20) NOT NULL,
+	[role] VARCHAR(50) NULL,
+	terminatedDate DATE
+);
+
+GO
+USE HRMDB;
+GO
+
+--Step3: Create the trigger that inserts the deleted employee data into Employee_Terminated_Archive table by checking the role of the employee
+
+CREATE TRIGGER trg_Employee_Termination_After_Delete 
+ON Employee
+AFTER DELETE
+AS
+BEGIN
+	DECLARE @eId CHAR(5);
+	DECLARE @role VARCHAR(50);
+
+	SELECT @eId = d.empId FROM deleted d;
+
+	IF EXISTS (SELECT * FROM Doctor WHERE Doctor.empId =  @eId)
+		SELECT @role = 'Doctor';
+
+	ELSE IF EXISTS (SELECT * FROM PharmacyPersonel WHERE PharmacyPersonel.empId =  @eId)
+		SELECT @role = 'PharmacyPersonel';
+
+	ELSE 
+		SELECT @role = 'Just Employee';
+
+	INSERT INTO Employee_Terminated_Archive_Role_Date
+	SELECT d.*, @role,GETDATE()
+	FROM deleted d
+END
+GO
+
+
+--Now test the trigger at work  by deleting an Employee - employee data will be archived, but 
+--the employee role wont be set as expected
+
+DELETE Employee WHERE empId = 'EMP19'
+
+SELECT * FROM Employee_Terminated_Archive_Role_Date
+
+
+
+DROP TABLE Employee_Terminated_Archive_Role_Date
+DROP TRIGGER trg_Employee_Termination_After_Delete
+
+
+
+--EXAMPLE - TRIGGER (Instead of Delete Trigger )
+--The above requirement can better be fulfilled within INSTEAD OF DELETE trigger as follows:
+--DROP TRIGGER trg_Instead_Of_Delete_Employee_Termination 
+
+CREATE TRIGGER trg_Instead_Of_Delete_Employee_Termination 
+ON Employee
+INSTEAD OF DELETE
+AS
+BEGIN
+	DECLARE @eId CHAR(5);
+	DECLARE @role VARCHAR(50);
+
+	SELECT @eId = d.empId FROM deleted d;
+
+	IF EXISTS (SELECT 1 FROM Doctor WHERE empId =  @eId)
+		SELECT @role = 'Doctor';
+	ELSE IF EXISTS (SELECT 1 FROM PharmacyPersonel WHERE empId =  @eId)
+		SELECT @role = 'PharmacyPersonel';
+	ELSE 
+		SELECT @role = 'Just Employee';
+
+	DELETE FROM Employee WHERE empId = @eId
+
+	INSERT INTO Employee_Terminated_Archive_Role_Date
+	SELECT d.*, @role,GETDATE()
+	FROM deleted d
+END
+GO
+
+
+--Now test deleting an employee that is a 1) Doctor 2) PharmacyPersonel and 3)any other employee
+SELECT * FROM Employee
+SELECT * FROM Doctor
+SELECT * FROM PharmacyPersonel
+
+DELETE FROM Employee WHERE empId = 'EMP02'
+DELETE FROM Employee WHERE empId = 'EMP06'
+DELETE FROM Employee WHERE empId = 'EMP19'
+
+SELECT * FROM Employee_Terminated_Archive_Role_Date
+GO
+
+
+
+--EXERCISE - TRIGGER # 20 ( Instead of Delete Trigger ) (*)
+--Create an Instead of delete trigger on Diagnosis table, that simply prints a warning 'You can't delete Diagnosis data!'
+
+CREATE TRIGGER trg_InsteadOfDiagnosisDelete ON Diagnosis
+INSTEAD OF DELETE
+AS
+	PRINT 'You can''t delete Diagnosis data!'
+go
+DELETE FROM Diagnosis
+GO
+
+
+
+
+--EXERCISE - TRIGGER # 19 - TRIGGER # 06  ( AFTER UPDATE )
+--Create the following audit table, RentalCust_Update_Audit, and code a trigger that 
+--can maintains/captures the updated record/s of RentalCust table. 
+
+
+CREATE TABLE RentalCust_Update_Audit
+(
+	AuditID INT IDENTITY (1,1),
+	[Message] VARCHAR(1000),
+
+)
+
+
+ALTER TRIGGER tr_RentalCust_After_Update
+ON RentalCust
+AFTER UPDATE
+AS 
+	BEGIN
+		
+		DECLARE @new_firstName VARCHAR(20), @old_firstName VARCHAR(20)
+		DECLARE @new_lastName VARCHAR(20), @old_lastName VARCHAR(20)
+		DECLARE @new_social CHAR(11), @old_social CHAR(11)
+		DECLARE @new_DoB DATE, @old_DoB DATE
+		DECLARE @new_phoneNo CHAR(12), @old_phoneNo CHAR(12)
+				
+		
+		SELECT @new_firstName=ins.firstName, @new_lastName=ins.lastName, @new_social=ins.social,
+			   @new_DoB=ins.DoB, @new_phoneNo=ins.phoneNo
+		FROM inserted ins
+
+		SELECT @old_firstName=del.firstName, @old_lastName=del.lastName, @old_social=del.social, 
+		       @old_DoB=del.DoB, @old_phoneNo=del.phoneNo
+		FROM deleted del 
+
+
+		DECLARE @MESSAGE NVARCHAR(500)
+
+		SET @MESSAGE =''
+
+		IF (@new_firstName<>@old_firstName)
+			SET @MESSAGE=@MESSAGE + 'First Name changed from '+ CAST (@old_firstName AS nvarchar(20))
+			                      + ' to ' + CAST (@new_firstName AS nvarchar(20))
+		IF (@new_lastName<>@old_lastName)
+			SET @MESSAGE=@MESSAGE + 'Last Name changed from '+ CAST (@old_lastName AS nvarchar(20))
+			                      + ' to ' + CAST (@new_lastName AS nvarchar(20))
+		IF (@new_social<>@old_social)
+			SET @MESSAGE=@MESSAGE + 'SSN changed from '+ CAST (@old_social AS nvarchar(11))
+			                      + ' to ' + CAST (@new_social AS nvarchar(11))
+		IF (@new_DoB<>@old_DoB)
+			SET @MESSAGE=@MESSAGE + 'DoB changed from '+ CAST (@old_DoB AS nvarchar(15))
+			                      + ' to ' + CAST (@old_DoB AS nvarchar(15))
+		IF (@new_phoneNo<>@old_phoneNo)
+			SET @MESSAGE=@MESSAGE + 'Phone # changed from '+ CAST (@old_phoneNo AS nvarchar(15))
+			                      + ' to ' + CAST (@new_phoneNo AS nvarchar(15))
+		ELSE 
+		   PRINT 'NO DATA CHANGE TOOK PLACE'
+
+		INSERT INTO RentalCust_Update_Audit ([Message]) VALUES (@MESSAGE)
+
+		
+	END
+GO
+
+
+
+
+
+--EXERCISE - TRIGGER # 21 ( Using triggers to insert data into multiple tables )
+--Inserting data into a view that is created from multiple base tables
+--First create the view - e.g. a view on Doctor and Employee tables ( vw_DoctorEmployee )
+
+
+CREATE VIEW vw_DoctorEmployee
+AS
+    SELECT e.*, d.empId[employeeId], d.docId, d.lisenceNo, d.lisenceDate, d.[rank], d.specialization
+	FROM Doctor d JOIN Employee e ON d.empId = e.empId
+GO
+
+
+
+SELECT * FROM vw_DoctorEmployee
+
+
+
+-- There are times where we want to insert data into tables through views,
+-- Assume that we hired a doctor (an employee) having all the employee and doctor information; 
+-- for this we want to insert data into both tables through the view vw_DoctorEmployee
+-- But this will not go as intended, because of multiple base tables.... see below
+
+
+INSERT INTO vw_DoctorEmployee 
+	VALUES ('EMP21', 'Nahom', 'Manore', '999-23-3356', '1989-09-07','M', 90000.00, '2019-03-01',
+			'786 34th St', '222','Washington', 'DC','20102', '(202) 000-3212', 'nm@yahoo.com',
+			'P', 'EMP20', 'OBS', 'SDFL1234', '2010-03-02','Junior','Surgen')
+GO
+
+--Above insert statement will error out as follows
+--Error: 
+--Msg 4405, Level 16, State 1, Line 1763
+--View or function 'vw_DoctorEmployee' is not updatable because the modification affects multiple base tables.
+
+--Now create an instead of insert trigger on the view vw_DoctorEmployee -> that takes the data and inserts into 
+--the tables individually
+
+
+CREATE TRIGGER trg_InsertToDoctorandEmployee 
+ON vw_DoctorEmployee
+INSTEAD OF INSERT
+AS
+	INSERT INTO Employee
+	SELECT empId,empFName, empLName, SSN, DoB, gender, salary, employedDate, strAddress, apt, city, [state], 
+	       zipCode, phoneNo, email, empType
+	FROM inserted
+
+	INSERT INTO Doctor
+	SELECT empId, docId, lisenceNo, lisenceDate, [rank], specialization
+	FROM inserted
+GO
+
+-- Now try the above insert statement
+INSERT INTO vw_DoctorEmployee VALUES
+('EMP21', 'Nahom', 'Manore', '999-23-3356', '1989-09-07','M', 90000, '2019-03-01','786 34th St', 
+ '222','Washington', 'DC','20102', '(202)-000-3212', 'nm@yahoo.com','P','EMP21','MD08', 'AAA-33-5555', 
+ '2010-03-02','Junior','Surgen')
+GO
+
+
+
+SELECT * FROM Doctor
+SELECT * FROM Employee
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
